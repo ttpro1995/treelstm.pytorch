@@ -24,7 +24,7 @@ from utils import load_word_vectors, build_vocab
 # CONFIG PARSER
 from config import parse_args
 # TRAIN AND TEST HELPER FUNCTIONS
-from trainer import Trainer
+from trainer import SentimentTrainer
 
 # MAIN BLOCK
 def main():
@@ -83,12 +83,12 @@ def main():
         torch.save(train_dataset, train_file)
 
     # initialize model, criterion/loss_function, optimizer
-    model = SimilarityTreeLSTM(
+    model = TreeLSTMSentiment(
                 args.cuda, vocab.size(),
                 args.input_dim, args.mem_dim,
                 args.hidden_dim, args.num_classes
             )
-    criterion = nn.KLDivLoss()
+    criterion = nn.CrossEntropyLoss()
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':
@@ -99,7 +99,7 @@ def main():
 
     # for words common to dataset vocab and GLOVE, use GLOVE vectors
     # for other words in dataset vocab, use random normal vectors
-    emb_file = os.path.join(args.data, 'sick_embed.pth')
+    emb_file = os.path.join(args.data, 'sst_embed.pth')
     if os.path.isfile(emb_file):
         emb = torch.load(emb_file)
     else:
@@ -120,7 +120,7 @@ def main():
     model.childsumtreelstm.emb.state_dict()['weight'].copy_(emb)
 
     # create trainer object for training and testing
-    trainer     = Trainer(args, model, criterion, optimizer)
+    trainer     = SentimentTrainer(args, model, criterion, optimizer)
 
     for epoch in range(args.epochs):
         train_loss             = trainer.train(train_dataset)

@@ -1,7 +1,7 @@
 from tqdm import tqdm
 import torch
 from torch.autograd import Variable as Var
-from utils import map_label_to_target
+from utils import map_label_to_target, map_label_to_target_sentiment
 
 
 class SentimentTrainer(object):
@@ -9,7 +9,7 @@ class SentimentTrainer(object):
     For Sentiment module
     """
     def __init__(self, args, model, criterion, optimizer):
-        super(Trainer, self).__init__()
+        super(SentimentTrainer, self).__init__()
         self.args       = args
         self.model      = model
         self.criterion  = criterion
@@ -25,9 +25,9 @@ class SentimentTrainer(object):
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             tree, sent, label = dataset[indices[idx]]
             input = Var(sent)
-            target = Var(map_label_to_target(label,dataset.num_classes))
+            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=True))
             if self.args.cuda:
-                linput, rinput = linput.cuda(), rinput.cuda()
+                input = input.cuda()
                 target = target.cuda()
             output = self.model(tree, input)
             err = self.criterion(output, target)
@@ -49,7 +49,7 @@ class SentimentTrainer(object):
         for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
             tree, sent, label = dataset[idx]
             input = Var(sent, volatile=True)
-            target = Var(map_label_to_target(label,dataset.num_classes), volatile=True)
+            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=True), volatile=True)
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
