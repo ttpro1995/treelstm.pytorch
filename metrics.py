@@ -8,11 +8,13 @@ class Metrics():
         self.num_classes = num_classes
 
     def pearson(self, predictions, labels):
+        #hack cai nay cho no thanh accuracy
         x = deepcopy(predictions)
         y = deepcopy(labels)
         x -= x.mean()
         x /= x.std()
-        y -= y.mean()
+        y -= y.mean() # FIXME: 'list' object has no attribute 'mean'
+                        # label is a list, not tensor
         y /= y.std()
         return torch.mean(torch.mul(x,y))
 

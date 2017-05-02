@@ -45,6 +45,7 @@ class SentimentTrainer(object):
         self.model.eval()
         loss = 0
         predictions = torch.zeros(len(dataset))
+        predictions = predictions.long()
         indices = torch.range(1,dataset.num_classes)
         for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
             tree, sent, label = dataset[idx]
@@ -53,10 +54,12 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output = self.model(tree, input)
+            output = self.model(tree, input) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
-            predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
+            val, pred = torch.max(output, 1)
+            predictions[idx] = pred.data.cpu()[0][0]
+            # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
         return loss/len(dataset), predictions
 
 

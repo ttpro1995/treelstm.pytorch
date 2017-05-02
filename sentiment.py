@@ -8,6 +8,10 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable as Var
 
+import sys
+from meowlogtool import log_util
+
+
 # IMPORT CONSTANTS
 import Constants
 # NEURAL NETWORK MODULES/LAYERS
@@ -141,20 +145,27 @@ def main():
     trainer     = SentimentTrainer(args, model, criterion, optimizer)
 
     for epoch in range(args.epochs):
-        train_loss             = trainer.train(train_dataset)
-        train_loss, train_pred = trainer.test(train_dataset)
+        train_loss             = trainer.train(dev_dataset)
+        train_loss, train_pred = trainer.test(dev_dataset)
         dev_loss, dev_pred     = trainer.test(dev_dataset)
         test_loss, test_pred   = trainer.test(test_dataset)
+        # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
+        # print('==> Train loss   : %f \t' % train_loss, end="")
+        # print('Train Pearson    : %f \t' % metrics.pearson(train_pred, train_dataset.labels), end="")
+        # print('Train MSE        : %f \t' % metrics.mse(train_pred, train_dataset.labels), end="\n")
+        # print('==> Dev loss     : %f \t' % dev_loss, end="")
+        # print('Dev Pearson      : %f \t' % metrics.pearson(dev_pred,dev_dataset.labels), end="")
+        # print('Dev MSE          : %f \t' % metrics.mse(dev_pred,dev_dataset.labels), end="\n")
+        # print('==> Test loss    : %f \t' % test_loss, end="")
+        # print('Test Pearson     : %f \t' % metrics.pearson(test_pred,test_dataset.labels), end="")
+        # print('Test MSE         : %f \t' % metrics.mse(test_pred,test_dataset.labels), end="\n")
 
-        print('==> Train loss   : %f \t' % train_loss, end="")
-        print('Train Pearson    : %f \t' % metrics.pearson(train_pred,train_dataset.labels), end="")
-        print('Train MSE        : %f \t' % metrics.mse(train_pred,train_dataset.labels), end="\n")
-        print('==> Dev loss     : %f \t' % dev_loss, end="")
-        print('Dev Pearson      : %f \t' % metrics.pearson(dev_pred,dev_dataset.labels), end="")
-        print('Dev MSE          : %f \t' % metrics.mse(dev_pred,dev_dataset.labels), end="\n")
-        print('==> Test loss    : %f \t' % test_loss, end="")
-        print('Test Pearson     : %f \t' % metrics.pearson(test_pred,test_dataset.labels), end="")
-        print('Test MSE         : %f \t' % metrics.mse(test_pred,test_dataset.labels), end="\n")
 
 if __name__ == "__main__":
+    # log to console and file
+    logger1 = log_util.create_logger("temp_file", print_console=True)
+    logger1.info("LOG_FILE") # log using loggerba
+    # attach log to stdout (print function)
+    s1 = log_util.StreamToLogger(logger1)
+    sys.stdout = s1
     main()

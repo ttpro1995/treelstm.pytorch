@@ -65,7 +65,7 @@ def map_label_to_target_sentiment(label, num_classes ,fine_grain = False):
     # num_classes not use yet
     target = torch.LongTensor(1)
     if fine_grain:
-        target[0] = label + 2
+        target[0] = int(label) + 2
     else:
         if label < 0:
             target[0] = 0
