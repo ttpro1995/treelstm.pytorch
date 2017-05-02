@@ -97,6 +97,9 @@ class SSTDataset(data.Dataset):
         self.trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
 
         # self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
+        self.labels = []
+        for i in xrange(0, len(self.trees)):
+            self.labels.append(self.trees[i].gold_label)
 
         self.size = len(self.trees)
 
