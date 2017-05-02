@@ -49,7 +49,7 @@ def main():
 
     # get vocab object from vocab file previously written
     vocab = Vocab(filename=vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
-    print('==> SICK vocabulary size : %d ' % vocab.size())
+    print('==> SST vocabulary size : %d ' % vocab.size())
 
     # # load SICK dataset splits
     # train_file = os.path.join(args.data,'sick_train.pth')

@@ -94,11 +94,11 @@ class SSTDataset(data.Dataset):
 
         self.sentences = self.read_sentences(os.path.join(path,'sents.toks'))
 
-        self.trees = self.read_trees(os.path.join(path,'dparents.txt'))
+        self.trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
 
-        self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
+        # self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
 
-        self.size = self.labels.size(0)
+        self.size = len(self.trees)
 
     def __len__(self):
         return self.size
@@ -123,16 +123,29 @@ class SSTDataset(data.Dataset):
         indices = self.vocab.convertToIdx(line.split(), Constants.UNK_WORD)
         return torch.LongTensor(indices)
 
-    def read_trees(self, filename):
-        # TODO: change to read sst
-        with open(filename,'r') as f:
-            trees = [self.read_tree(line) for line in tqdm(f.readlines())]
+    def read_trees(self, filename_parents, filename_labels):
+        pfile = open(filename_parents, 'r') # parent node
+        lfile = open(filename_labels, 'r') # label node
+        p = pfile.readlines()
+        l = lfile.readlines()
+        pl = zip(p, l) # (parent, label) tuple
+        trees = [self.read_tree(p_line, l_line) for p_line, l_line in tqdm(pl)]
+        # with open(filename,'r') as f:
+        #     trees = [self.read_tree(line) for line in tqdm(f.readlines())]
         return trees
 
-    def read_tree(self, line):
-        parents = map(int,line.split())
+    @staticmethod
+    def parse_dlabel_token(x):
+        if x == '#':
+            return None
+        return int(x)
+
+    def read_tree(self, line, label_line):
+        # TODO: read gold label
+        parents = map(int,line.split()) # split each number and turn to int
         trees = dict()
         root = None
+        labels = map(SSTDataset.parse_dlabel_token, label_line.split())
         for i in xrange(1,len(parents)+1):
             #if not trees[i-1] and parents[i-1]!=-1:
             if i-1 not in trees.keys() and parents[i-1]!=-1:
@@ -147,6 +160,7 @@ class SSTDataset(data.Dataset):
                         tree.add_child(prev)
                     trees[idx-1] = tree
                     tree.idx = idx-1
+                    tree.gold_label = labels[idx-1] # add node label
                     #if trees[parent-1] is not None:
                     if parent-1 in trees.keys():
                         trees[parent-1].add_child(tree)
@@ -160,6 +174,7 @@ class SSTDataset(data.Dataset):
         return root
 
     def read_labels(self, filename):
+        # Not in used
         with open(filename,'r') as f:
             labels = map(lambda x: float(x), f.readlines())
             labels = torch.Tensor(labels)

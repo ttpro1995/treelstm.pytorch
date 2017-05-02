@@ -4,6 +4,7 @@ class Tree(object):
         self.parent = None
         self.num_children = 0
         self.children = list()
+        self.gold_label = None # node label for SST
 
     def add_child(self,child):
         child.parent = self
