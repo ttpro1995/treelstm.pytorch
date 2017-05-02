@@ -106,3 +106,35 @@ class SimilarityTreeLSTM(nn.Module):
         rstate, rhidden = self.childsumtreelstm(rtree, rinputs)
         output = self.similarity(lstate, rstate)
         return output
+
+
+class SentimentModule(nn.Module):
+    def __init__(self, cuda, mem_dim, hidden_dim, num_classes, dropout = False):
+        super(SentimentModule, self).__init__()
+        self.cudaFlag = cuda
+        self.mem_dim = mem_dim
+        self.num_classes = num_classes
+        self.dropout = dropout
+        self.l1 = nn.Linear(self.mem_dim, self.num_classes)
+        if self.cudaFlag:
+            self.l1 = self.l1.cuda()
+
+
+    def forward(self, vec, training = False):
+        if self.dropout:
+            out = F.log_softmax(self.l1(F.dropout(vec, training)))
+        else:
+            out = F.log_softmax(self.l1(vec))
+        return out
+
+class TreeLSTMSentiment(nn.Module):
+    def __init__(self, cuda, vocab_size, in_dim, mem_dim, hidden_dim, num_classes):
+        super(TreeLSTMSentiment, self).__init__()
+        self.cudaFlag = cuda
+        self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim)
+        self.output_module = SentimentModule(cuda, mem_dim, hidden_dim, num_classes)
+
+    def forward(self, trees, inputs, training = False):
+        state, hidden = self.childsumtreelstm(trees, inputs)
+        output = self.output_module(state)
+        return output
