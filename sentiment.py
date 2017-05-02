@@ -75,12 +75,30 @@ def main():
     # print('==> Size of test data    : %d ' % len(test_dataset))
 
     # Load SST dataset splits
+
+    # train
     train_file = os.path.join(args.data,'sst_train.pth')
     if os.path.isfile(train_file):
         train_dataset = torch.load(train_file)
     else:
         train_dataset = SSTDataset(train_dir, vocab, args.num_classes)
         torch.save(train_dataset, train_file)
+
+    # dev
+    dev_file = os.path.join(args.data,'sst_dev.pth')
+    if os.path.isfile(dev_file):
+        dev_dataset = torch.load(dev_file)
+    else:
+        dev_dataset = SSTDataset(dev_dir, vocab, args.num_classes)
+        torch.save(dev_dataset, dev_file)
+
+    # test
+    test_file = os.path.join(args.data,'sst_test.pth')
+    if os.path.isfile(test_file):
+        test_dataset = torch.load(test_file)
+    else:
+        test_dataset = SSTDataset(test_dir, vocab, args.num_classes)
+        torch.save(test_dataset, test_file)
 
     # initialize model, criterion/loss_function, optimizer
     model = TreeLSTMSentiment(
