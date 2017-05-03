@@ -136,5 +136,5 @@ class TreeLSTMSentiment(nn.Module):
 
     def forward(self, trees, inputs, training = False):
         state, hidden = self.childsumtreelstm(trees, inputs)
-        output = self.output_module(state)
+        output = self.output_module(state, training)
         return output

@@ -172,4 +172,5 @@ if __name__ == "__main__":
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)
     sys.stdout = s1
+    print ('_________________________________start___________________________________')
     main()

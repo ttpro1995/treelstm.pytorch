@@ -29,7 +29,7 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output = self.model(tree, input)
+            output = self.model(tree, input, training = True)
             err = self.criterion(output, target)
             loss += err.data[0]
             err.backward()
