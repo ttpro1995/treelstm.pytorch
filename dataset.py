@@ -93,15 +93,29 @@ class SSTDataset(data.Dataset):
         self.num_classes = num_classes
         self.fine_grain = fine_grain
 
-        self.sentences = self.read_sentences(os.path.join(path,'sents.toks'))
+        temp_sentences = self.read_sentences(os.path.join(path,'sents.toks'))
 
-        self.trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
+        temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
 
         # self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
         self.labels = []
+
+        if not self.fine_grain:
+            # only get pos or neg
+            new_trees = []
+            new_sentences = []
+            for i in range(len(temp_trees)):
+                if temp_trees[i].gold_label != 1: # 0 neg, 1 neutral, 2 pos
+                    new_trees.append(temp_trees[i])
+                    new_sentences.append(temp_sentences[i])
+            self.trees = new_trees
+            self.sentences = new_sentences
+        else:
+            self.trees = temp_trees
+            self.sentences = temp_sentences
+
         for i in xrange(0, len(self.trees)):
             self.labels.append(self.trees[i].gold_label)
-
         self.labels = torch.Tensor(self.labels) # let labels be tensor
         self.size = len(self.trees)
 
@@ -135,8 +149,7 @@ class SSTDataset(data.Dataset):
         l = lfile.readlines()
         pl = zip(p, l) # (parent, label) tuple
         trees = [self.read_tree(p_line, l_line) for p_line, l_line in tqdm(pl)]
-        # with open(filename,'r') as f:
-        #     trees = [self.read_tree(line) for line in tqdm(f.readlines())]
+
         return trees
 
     def parse_dlabel_token(self, x):

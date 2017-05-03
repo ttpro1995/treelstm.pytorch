@@ -113,9 +113,6 @@ def main():
         torch.save(test_dataset, test_file)
         is_preprocessing_data = True
 
-    if is_preprocessing_data:
-        print ('quit program due to memory leak during preprocess data, please rerun')
-        quit()
 
     # initialize model, criterion/loss_function, optimizer
     model = TreeLSTMSentiment(
@@ -149,8 +146,13 @@ def main():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
         torch.save(emb, emb_file)
-        quit()  # restart
+        is_preprocessing_data = True # flag to quit
         print('done creating emb, quit')
+
+    if is_preprocessing_data:
+        print ('quit program due to memory leak during preprocess data, please rerun sentiment.py')
+        quit()
+
     # plug these into embedding matrix inside model
     if args.cuda:
         emb = emb.cuda()
@@ -160,16 +162,16 @@ def main():
     trainer     = SentimentTrainer(args, model, criterion, optimizer)
 
     for epoch in range(args.epochs):
-        train_loss             = trainer.train(dev_dataset)
+        train_loss             = trainer.train(train_dataset)
         # train_loss, train_pred = trainer.test(dev_dataset)
         dev_loss, dev_pred     = trainer.test(dev_dataset)
-        # test_loss, test_pred   = trainer.test(test_dataset)
+        test_loss, test_pred   = trainer.test(test_dataset)
         # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
         dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
-        # test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
         print('==> Train loss   : %f \t' % train_loss, end="")
         print('Epoch ',epoch, 'dev percentage ',dev_acc )
-        # print('Epoch ', epoch, 'test percentage ', test_acc)
+        print('Epoch ', epoch, 'test percentage ', test_acc)
         # print('Train Pearson    : %f \t' % metrics.pearson(train_pred, train_dataset.labels), end="")
         # print('Train MSE        : %f \t' % metrics.mse(train_pred, train_dataset.labels), end="\n")
         # print('==> Dev loss     : %f \t' % dev_loss, end="")
