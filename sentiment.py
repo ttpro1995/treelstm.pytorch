@@ -84,29 +84,38 @@ def main():
 
     # Load SST dataset splits
 
+    is_preprocessing_data = False # let program turn off after preprocess data
+
     # train
     train_file = os.path.join(args.data,'sst_train.pth')
     if os.path.isfile(train_file):
         train_dataset = torch.load(train_file)
     else:
-        train_dataset = SSTDataset(train_dir, vocab, args.num_classes)
+        train_dataset = SSTDataset(train_dir, vocab, args.num_classes, args.fine_grain)
         torch.save(train_dataset, train_file)
+        is_preprocessing_data = True
 
     # dev
     dev_file = os.path.join(args.data,'sst_dev.pth')
     if os.path.isfile(dev_file):
         dev_dataset = torch.load(dev_file)
     else:
-        dev_dataset = SSTDataset(dev_dir, vocab, args.num_classes)
+        dev_dataset = SSTDataset(dev_dir, vocab, args.num_classes, args.fine_grain)
         torch.save(dev_dataset, dev_file)
+        is_preprocessing_data = True
 
     # test
     test_file = os.path.join(args.data,'sst_test.pth')
     if os.path.isfile(test_file):
         test_dataset = torch.load(test_file)
     else:
-        test_dataset = SSTDataset(test_dir, vocab, args.num_classes)
+        test_dataset = SSTDataset(test_dir, vocab, args.num_classes, args.fine_grain)
         torch.save(test_dataset, test_file)
+        is_preprocessing_data = True
+
+    if is_preprocessing_data:
+        print ('quit program due to memory leak during preprocess data, please rerun')
+        quit()
 
     # initialize model, criterion/loss_function, optimizer
     model = TreeLSTMSentiment(
@@ -140,6 +149,8 @@ def main():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
         torch.save(emb, emb_file)
+        quit()  # restart
+        print('done creating emb, quit')
     # plug these into embedding matrix inside model
     if args.cuda:
         emb = emb.cuda()
@@ -149,16 +160,16 @@ def main():
     trainer     = SentimentTrainer(args, model, criterion, optimizer)
 
     for epoch in range(args.epochs):
-        train_loss             = trainer.train(train_dataset)
+        train_loss             = trainer.train(dev_dataset)
         # train_loss, train_pred = trainer.test(dev_dataset)
         dev_loss, dev_pred     = trainer.test(dev_dataset)
-        test_loss, test_pred   = trainer.test(test_dataset)
+        # test_loss, test_pred   = trainer.test(test_dataset)
         # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
         dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
-        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        # test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
         print('==> Train loss   : %f \t' % train_loss, end="")
         print('Epoch ',epoch, 'dev percentage ',dev_acc )
-        print('Epoch ', epoch, 'test percentage ', test_acc)
+        # print('Epoch ', epoch, 'test percentage ', test_acc)
         # print('Train Pearson    : %f \t' % metrics.pearson(train_pred, train_dataset.labels), end="")
         # print('Train MSE        : %f \t' % metrics.mse(train_pred, train_dataset.labels), end="\n")
         # print('==> Dev loss     : %f \t' % dev_loss, end="")

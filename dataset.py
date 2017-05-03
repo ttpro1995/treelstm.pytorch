@@ -87,10 +87,11 @@ class SICKDataset(data.Dataset):
 
 # Dataset class for SICK dataset
 class SSTDataset(data.Dataset):
-    def __init__(self, path, vocab, num_classes):
+    def __init__(self, path, vocab, num_classes, fine_grain):
         super(SSTDataset, self).__init__()
         self.vocab = vocab
         self.num_classes = num_classes
+        self.fine_grain = fine_grain
 
         self.sentences = self.read_sentences(os.path.join(path,'sents.toks'))
 
@@ -138,18 +139,27 @@ class SSTDataset(data.Dataset):
         #     trees = [self.read_tree(line) for line in tqdm(f.readlines())]
         return trees
 
-    @staticmethod
-    def parse_dlabel_token(x):
+    def parse_dlabel_token(self, x):
         if x == '#':
             return None
-        return int(x)
+        else:
+            if self.fine_grain: # -2 -1 0 1 2 => 0 1 2 3 4
+                return int(x)+2
+            else: # # -2 -1 0 1 2 => 0 1 2
+                tmp = int(x)
+                if tmp < 0:
+                    return 0
+                elif tmp == 0:
+                    return 1
+                elif tmp >0 :
+                    return 2
 
     def read_tree(self, line, label_line):
         # TODO: read gold label
         parents = map(int,line.split()) # split each number and turn to int
         trees = dict()
         root = None
-        labels = map(SSTDataset.parse_dlabel_token, label_line.split())
+        labels = map(self.parse_dlabel_token, label_line.split())
         for i in xrange(1,len(parents)+1):
             #if not trees[i-1] and parents[i-1]!=-1:
             if i-1 not in trees.keys() and parents[i-1]!=-1:
