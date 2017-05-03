@@ -122,7 +122,7 @@ class SentimentModule(nn.Module):
 
     def forward(self, vec, training = False):
         if self.dropout:
-            out = F.log_softmax(self.l1(F.dropout(vec, training)))
+            out = F.log_softmax(self.l1(F.dropout(vec, training = training)))
         else:
             out = F.log_softmax(self.l1(vec))
         return out
