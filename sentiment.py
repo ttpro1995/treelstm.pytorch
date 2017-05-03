@@ -21,7 +21,7 @@ from model import *
 from tree import Tree
 from vocab import Vocab
 # DATASET CLASS FOR SICK DATASET
-from dataset import SICKDataset, SSTDataset
+from dataset import SSTDataset
 # METRICS CLASS FOR EVALUATION
 from metrics import Metrics
 # UTILITY FUNCTIONS
@@ -36,7 +36,6 @@ def main():
     global args
     args = parse_args(type=1)
     args.input_dim, args.mem_dim = 300, 168
-    args.hidden_dim = 50
     if args.fine_grain:
         args.num_classes = 5 # 0 1 2 3 4
     else:
@@ -59,29 +58,6 @@ def main():
     # get vocab object from vocab file previously written
     vocab = Vocab(filename=vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
     print('==> SST vocabulary size : %d ' % vocab.size())
-
-    # # load SICK dataset splits
-    # train_file = os.path.join(args.data,'sick_train.pth')
-    # if os.path.isfile(train_file):
-    #     train_dataset = torch.load(train_file)
-    # else:
-    #     train_dataset = SICKDataset(train_dir, vocab, args.num_classes)
-    #     torch.save(train_dataset, train_file)
-    # print('==> Size of train data   : %d ' % len(train_dataset))
-    # dev_file = os.path.join(args.data,'sick_dev.pth')
-    # if os.path.isfile(dev_file):
-    #     dev_dataset = torch.load(dev_file)
-    # else:
-    #     dev_dataset = SICKDataset(dev_dir, vocab, args.num_classes)
-    #     torch.save(dev_dataset, dev_file)
-    # print('==> Size of dev data     : %d ' % len(dev_dataset))
-    # test_file = os.path.join(args.data,'sick_test.pth')
-    # if os.path.isfile(test_file):
-    #     test_dataset = torch.load(test_file)
-    # else:
-    #     test_dataset = SICKDataset(test_dir, vocab, args.num_classes)
-    #     torch.save(test_dataset, test_file)
-    # print('==> Size of test data    : %d ' % len(test_dataset))
 
     # Load SST dataset splits
 
@@ -119,7 +95,7 @@ def main():
     model = TreeLSTMSentiment(
                 args.cuda, vocab.size(),
                 args.input_dim, args.mem_dim,
-                args.hidden_dim, args.num_classes
+                args.num_classes
             )
     criterion = nn.CrossEntropyLoss()
     if args.cuda:
@@ -175,14 +151,7 @@ def main():
         print('==> Train loss   : %f \t' % train_loss, end="")
         print('Epoch ',epoch, 'dev percentage ',dev_acc )
         print('Epoch ', epoch, 'test percentage ', test_acc)
-        # print('Train Pearson    : %f \t' % metrics.pearson(train_pred, train_dataset.labels), end="")
-        # print('Train MSE        : %f \t' % metrics.mse(train_pred, train_dataset.labels), end="\n")
-        # print('==> Dev loss     : %f \t' % dev_loss, end="")
-        # print('Dev Pearson      : %f \t' % metrics.pearson(dev_pred,dev_dataset.labels), end="")
-        # print('Dev MSE          : %f \t' % metrics.mse(dev_pred,dev_dataset.labels), end="\n")
-        # print('==> Test loss    : %f \t' % test_loss, end="")
-        # print('Test Pearson     : %f \t' % metrics.pearson(test_pred,test_dataset.labels), end="")
-        # print('Test MSE         : %f \t' % metrics.mse(test_pred,test_dataset.labels), end="\n")
+
 
 
 if __name__ == "__main__":

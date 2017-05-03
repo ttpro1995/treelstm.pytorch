@@ -26,6 +26,7 @@ class ChildSumTreeLSTM(nn.Module):
 
         self.ux = nn.Linear(self.in_dim,self.mem_dim)
         self.uh = nn.Linear(self.mem_dim,self.mem_dim)
+        # TODO: output module ?
 
     def node_forward(self, inputs, child_c, child_h):
         child_h_sum = F.torch.sum(torch.squeeze(child_h,1),0)
@@ -109,7 +110,7 @@ class SimilarityTreeLSTM(nn.Module):
 
 
 class SentimentModule(nn.Module):
-    def __init__(self, cuda, mem_dim, hidden_dim, num_classes, dropout = False):
+    def __init__(self, cuda, mem_dim, num_classes, dropout = False):
         super(SentimentModule, self).__init__()
         self.cudaFlag = cuda
         self.mem_dim = mem_dim
@@ -128,11 +129,11 @@ class SentimentModule(nn.Module):
         return out
 
 class TreeLSTMSentiment(nn.Module):
-    def __init__(self, cuda, vocab_size, in_dim, mem_dim, hidden_dim, num_classes):
+    def __init__(self, cuda, vocab_size, in_dim, mem_dim, num_classes):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim)
-        self.output_module = SentimentModule(cuda, mem_dim, hidden_dim, num_classes, dropout=True)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
 
     def forward(self, trees, inputs, training = False):
         state, hidden = self.childsumtreelstm(trees, inputs)
