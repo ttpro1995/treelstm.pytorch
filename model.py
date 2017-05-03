@@ -70,6 +70,7 @@ class ChildSumTreeLSTM(nn.Module):
 
         if self.output_module != None:
             output = self.output_module.forward(tree.state[0], training)
+            tree.output = output
             if training and tree.gold_label != None:
                 target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
                 if self.cudaFlag:
