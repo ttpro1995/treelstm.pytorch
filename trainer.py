@@ -29,8 +29,8 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output = self.model.forward(tree, input, training = True)
-            err = self.criterion(output, target)
+            output, err = self.model.forward(tree, input, training = True)
+            # err = self.criterion(output, target) we calculate loss in the tree already
             loss += err.data[0]
             err.backward()
             k += 1
@@ -54,7 +54,7 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output = self.model(tree, input) # size(1,5)
+            output, _ = self.model(tree, input) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
             output[:,1] = -9999 # no need middle (neutral) value

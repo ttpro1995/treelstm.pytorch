@@ -61,7 +61,7 @@ def map_label_to_target(label,num_classes):
         target[0][ceil-1] = label - floor
     return target
 
-def map_label_to_target_sentiment(label, num_classes ,fine_grain = False):
+def map_label_to_target_sentiment(label, num_classes = 0 ,fine_grain = False):
     # num_classes not use yet
     target = torch.LongTensor(1)
     target[0] = int(label) # nothing to do here as we preprocess data

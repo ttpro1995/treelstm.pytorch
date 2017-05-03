@@ -3,10 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable as Var
 import Constants
+import utils
 
 # module for childsumtreelstm
 class ChildSumTreeLSTM(nn.Module):
-    def __init__(self, cuda, vocab_size, in_dim, mem_dim):
+    def __init__(self, cuda, vocab_size, in_dim, mem_dim, criterion):
         super(ChildSumTreeLSTM, self).__init__()
         self.cudaFlag = cuda
         self.in_dim = in_dim
@@ -27,6 +28,11 @@ class ChildSumTreeLSTM(nn.Module):
         self.ux = nn.Linear(self.in_dim,self.mem_dim)
         self.uh = nn.Linear(self.mem_dim,self.mem_dim)
         # TODO: output module ?
+        self.criterion = criterion
+        self.output_module = None
+
+    def set_output_module(self, output_module):
+        self.output_module = output_module
 
     def node_forward(self, inputs, child_c, child_h):
         child_h_sum = F.torch.sum(torch.squeeze(child_h,1),0)
@@ -48,14 +54,29 @@ class ChildSumTreeLSTM(nn.Module):
 
         return c,h
 
-    def forward(self, tree, inputs):
+    def forward(self, tree, inputs, training = False):
         # add singleton dimension for future call to node_forward
         embs = F.torch.unsqueeze(self.emb(inputs),1)
+
+        loss = Var(torch.zeros(1)) # init zero loss
+        if self.cudaFlag:
+            loss = loss.cuda()
+
         for idx in xrange(tree.num_children):
-            _ = self.forward(tree.children[idx], inputs)
+            _, child_loss = self.forward(tree.children[idx], inputs, training)
+            loss = loss + child_loss
         child_c, child_h = self.get_child_states(tree)
         tree.state = self.node_forward(embs[tree.idx-1], child_c, child_h)
-        return tree.state
+
+        if self.output_module != None:
+            output = self.output_module.forward(tree.state[0], training)
+            if training and tree.gold_label != None:
+                target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
+                if self.cudaFlag:
+                    target = target.cuda()
+                loss = loss + self.criterion(output, target)
+
+        return tree.state, loss
 
     def get_child_states(self, tree):
         # add extra singleton dimension in middle...
@@ -129,13 +150,15 @@ class SentimentModule(nn.Module):
         return out
 
 class TreeLSTMSentiment(nn.Module):
-    def __init__(self, cuda, vocab_size, in_dim, mem_dim, num_classes):
+    def __init__(self, cuda, vocab_size, in_dim, mem_dim, num_classes, criterion):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
-        self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim)
+        self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.childsumtreelstm.set_output_module(self.output_module)
 
-    def forward(self, trees, inputs, training = False):
-        state, hidden = self.childsumtreelstm(trees, inputs)
-        output = self.output_module(state, training)
-        return output
+    def forward(self, tree, inputs, training = False):
+        tree_state, loss = self.childsumtreelstm(tree, inputs, training)
+        state, hidden = tree_state
+        output = tree.output
+        return output, loss

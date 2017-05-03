@@ -90,14 +90,14 @@ def main():
         torch.save(test_dataset, test_file)
         is_preprocessing_data = True
 
-
+    criterion = nn.CrossEntropyLoss()
     # initialize model, criterion/loss_function, optimizer
     model = TreeLSTMSentiment(
                 args.cuda, vocab.size(),
                 args.input_dim, args.mem_dim,
-                args.num_classes
+                args.num_classes, criterion
             )
-    criterion = nn.CrossEntropyLoss()
+
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':
