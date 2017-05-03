@@ -29,7 +29,7 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output = self.model(tree, input, training = True)
+            output = self.model.forward(tree, input, training = True)
             err = self.criterion(output, target)
             loss += err.data[0]
             err.backward()
@@ -57,6 +57,7 @@ class SentimentTrainer(object):
             output = self.model(tree, input) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
+            output[:,1] = -9999 # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             predictions[idx] = pred.data.cpu()[0][0]
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
