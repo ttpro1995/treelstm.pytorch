@@ -34,8 +34,12 @@ from trainer import SentimentTrainer
 def main():
     global args
     args = parse_args(type=1)
-    args.input_dim, args.mem_dim = 300, 150
-    args.hidden_dim, args.num_classes = 50, 5
+    args.input_dim, args.mem_dim = 300, 168
+    args.hidden_dim = 50
+    if args.fine_grain:
+        args.num_classes = 5 # 0 1 2 3 4
+    else:
+        args.num_classes = 3 # 0 1 2 (1 neutral)
     args.cuda = args.cuda and torch.cuda.is_available()
     print(args)
     torch.manual_seed(args.seed)

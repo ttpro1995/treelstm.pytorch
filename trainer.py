@@ -25,7 +25,7 @@ class SentimentTrainer(object):
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             tree, sent, label = dataset[indices[idx]]
             input = Var(sent)
-            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=True))
+            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain))
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
@@ -50,7 +50,7 @@ class SentimentTrainer(object):
         for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
             tree, sent, label = dataset[idx]
             input = Var(sent, volatile=True)
-            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=True), volatile=True)
+            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain), volatile=True)
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()

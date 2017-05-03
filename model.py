@@ -132,7 +132,7 @@ class TreeLSTMSentiment(nn.Module):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim)
-        self.output_module = SentimentModule(cuda, mem_dim, hidden_dim, num_classes)
+        self.output_module = SentimentModule(cuda, mem_dim, hidden_dim, num_classes, dropout=True)
 
     def forward(self, trees, inputs, training = False):
         state, hidden = self.childsumtreelstm(trees, inputs)
