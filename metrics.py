@@ -22,3 +22,17 @@ class Metrics():
         x = Var(deepcopy(predictions), volatile=True)
         y = Var(deepcopy(labels), volatile=True)
         return nn.MSELoss()(x,y).data[0]
+
+    def sentiment_accuracy_score(self, predictions, labels, fine_gained = True):
+        a = 5
+        if fine_gained: # 5
+            l = labels + 2
+        else: # 0 1 2
+            l = torch.zero(labels.size(0))
+            l[labels==0] = 1
+            l[labels >0] = 2
+
+        correct = (predictions==l).sum()
+        total = labels.size(0)
+        acc = float(correct)/total
+        return acc
