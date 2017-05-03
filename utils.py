@@ -66,3 +66,15 @@ def map_label_to_target_sentiment(label, num_classes ,fine_grain = False):
     target = torch.LongTensor(1)
     target[0] = int(label) # nothing to do here as we preprocess data
     return target
+
+def count_param(model):
+    print('_param count_')
+    params = list(model.parameters())
+    sum_param = 0
+    for p in params:
+        sum_param+= p.numel()
+        print (p.size())
+    emb_sum = params[0].numel()
+    sum_param-= emb_sum
+    print ('sum', sum_param)
+    print('____________')

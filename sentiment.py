@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable as Var
+import utils
 
 import sys
 from meowlogtool import log_util
@@ -128,6 +129,8 @@ def main():
     elif args.optim=='adagrad':
         optimizer   = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
     metrics = Metrics(args.num_classes)
+
+    utils.count_param(model)
 
     # for words common to dataset vocab and GLOVE, use GLOVE vectors
     # for other words in dataset vocab, use random normal vectors

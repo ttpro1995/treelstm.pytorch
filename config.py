@@ -41,7 +41,7 @@ def parse_args(type=0):
         parser.add_argument('--wd', default=1e-4, type=float,
                             help='weight decay (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
-                            help='optimizer (default: adam)')
+                            help='optimizer (default: adagrad)')
         parser.add_argument('--seed', default=123, type=int,
                             help='random seed (default: 123)')
         parser.add_argument('--fine_grain', default=False, type=bool,
