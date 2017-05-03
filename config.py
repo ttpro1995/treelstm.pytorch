@@ -36,11 +36,11 @@ def parse_args(type=0):
                             help='batchsize for optimizer updates')
         parser.add_argument('--epochs', default=15, type=int,
                             help='number of total epochs to run')
-        parser.add_argument('--lr', default=0.01, type=float,
+        parser.add_argument('--lr', default=0.05, type=float,
                             metavar='LR', help='initial learning rate')
-        parser.add_argument('--wd', default=1e-4, type=float,
+        parser.add_argument('--wd', default=0, type=float,
                             help='weight decay (default: 1e-4)')
-        parser.add_argument('--optim', default='adam',
+        parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adam)')
         parser.add_argument('--seed', default=123, type=int,
                             help='random seed (default: 123)')
