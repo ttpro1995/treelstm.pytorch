@@ -34,6 +34,24 @@ class ChildSumTreeLSTM(nn.Module):
     def set_output_module(self, output_module):
         self.output_module = output_module
 
+    def getParameters(self):
+        """
+        Get flatParameters
+        note that getParameters and parameters is not equal in this case
+        getParameters do not get parameters of output module
+        :return: 1d tensor
+        """
+        params = []
+        for m in [self.ix, self.ih, self.fx, self.fh, self.ox, self.oh, self.ux, self.uh]:
+            # we do not get param of output module
+            l = list(m.parameters())
+            params.extend(l)
+
+        one_dim = [p.view(p.numel()) for p in params]
+        params = F.torch.cat(one_dim)
+        return params
+
+
     def node_forward(self, inputs, child_c, child_h):
         child_h_sum = F.torch.sum(torch.squeeze(child_h,1),0)
 

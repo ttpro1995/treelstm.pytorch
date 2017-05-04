@@ -34,8 +34,10 @@ class SentimentTrainer(object):
                 rel_input = rel_input.cuda()
                 target = target.cuda()
             output, err = self.model.forward(tree, input, tag_input, rel_input, training = True)
+            params = self.model.childsumtreelstm.getParameters()
+            params_norm = params.norm()
             # err = self.criterion(output, target) we calculate loss in the tree already
-            loss += err.data[0]
+            loss += err.data[0] + 0.5*self.args.reg*params_norm*params_norm
             err.backward()
             k += 1
             if k%self.args.batchsize==0:
