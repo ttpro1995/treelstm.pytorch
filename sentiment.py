@@ -110,10 +110,8 @@ def main():
                 args.num_classes, criterion
             )
 
-    embedding_model = nn.Embedding(vocab.size(), args.input_dim,
-                                padding_idx=Constants.PAD)
-    if args.cuda:
-        embedding_model = embedding_model.cuda()
+    # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
+    #                             padding_idx=Constants.PAD)
 
     if args.cuda:
         model.cuda(), criterion.cuda()
@@ -154,10 +152,12 @@ def main():
         emb = emb.cuda()
 
     # model.childsumtreelstm.emb.state_dict()['weight'].copy_(emb)
-    embedding_model.state_dict()['weight'].copy_(emb)
+    # embedding_model.state_dict()['weight'].copy_(emb)
+    # initialize word embeding
+    model.word_embedding.state_dict()['weight'].copy_(emb)
 
     # create trainer object for training and testing
-    trainer     = SentimentTrainer(args, model, embedding_model ,criterion, optimizer)
+    trainer     = SentimentTrainer(args, model, criterion, optimizer)
 
     for epoch in range(args.epochs):
         train_loss             = trainer.train(train_dataset)

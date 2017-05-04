@@ -8,11 +8,10 @@ class SentimentTrainer(object):
     """
     For Sentiment module
     """
-    def __init__(self, args, model, embedding_model ,criterion, optimizer):
+    def __init__(self, args, model ,criterion, optimizer):
         super(SentimentTrainer, self).__init__()
         self.args       = args
         self.model      = model
-        self.embedding_model = embedding_model
         self.criterion  = criterion
         self.optimizer  = optimizer
         self.epoch      = 0
@@ -20,27 +19,26 @@ class SentimentTrainer(object):
     # helper function for training
     def train(self, dataset):
         self.model.train()
-        self.embedding_model.train()
-        self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
-            tree, sent, label = dataset[indices[idx]]
+            tree, sent, tag, rel, label = dataset[indices[idx]]
             input = Var(sent)
+            tag_input = Var(tag)
+            rel_input = Var(rel)
             target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain))
             if self.args.cuda:
                 input = input.cuda()
+                tag_input = tag_input.cuda()
+                rel_input = rel_input.cuda()
                 target = target.cuda()
-            emb = F.torch.unsqueeze(self.embedding_model(input),1)
-            output, err = self.model.forward(tree, emb, training = True)
+            output, err = self.model.forward(tree, input, tag_input, rel_input, training = True)
             # err = self.criterion(output, target) we calculate loss in the tree already
             loss += err.data[0]
             err.backward()
             k += 1
             if k%self.args.batchsize==0:
-                for f in self.embedding_model.parameters():
-                    f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
                 self.optimizer.zero_grad()
         self.epoch += 1
@@ -49,20 +47,22 @@ class SentimentTrainer(object):
     # helper function for testing
     def test(self, dataset):
         self.model.eval()
-        self.embedding_model.eval()
         loss = 0
         predictions = torch.zeros(len(dataset))
         predictions = predictions
         indices = torch.range(1,dataset.num_classes)
         for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
-            tree, sent, label = dataset[idx]
+            tree, sent, tag, rel, label = dataset[idx]
             input = Var(sent, volatile=True)
+            tag_input = Var(tag, volatile=True)
+            rel_input = Var(rel, volatile=True)
             target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain), volatile=True)
             if self.args.cuda:
                 input = input.cuda()
+                tag_input = tag_input.cuda()
+                rel_input = rel_input.cuda()
                 target = target.cuda()
-            emb = F.torch.unsqueeze(self.embedding_model(input),1)
-            output, _ = self.model(tree, emb) # size(1,5)
+            output, _ = self.model(tree, input, tag_input, rel_input) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
             output[:,1] = -9999 # no need middle (neutral) value

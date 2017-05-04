@@ -151,19 +151,25 @@ class SentimentModule(nn.Module):
         return out
 
 class TreeLSTMSentiment(nn.Module):
-    def __init__(self, cuda, vocab_size, postag_vocabsize, rel_vocabsize , in_dim, mem_dim, num_classes, criterion):
+    def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize , in_dim, mem_dim, num_classes, criterion):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
         self.childsumtreelstm.set_output_module(self.output_module)
 
+        # word embeddiing
+        self.word_embedding = nn.Embedding(vocab_size,in_dim,
+                                padding_idx=Constants.PAD)
         # embedding for postag and rel
-        self.postag_emb = nn.Embedding(postag_vocabsize, in_dim)
+        self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
         self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
 
-    def forward(self, tree, inputs, training = False):
-        tree_state, loss = self.childsumtreelstm(tree, inputs, training)
+    def forward(self, tree, sent_inputs, tag_inputs, rel_inputs, training = False):
+        sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
+        tag_emb = F.torch.unsqueeze(self.tag_emb.forward(tag_inputs), 1)
+        rel_emb = F.torch.unsqueeze(self.rel_emb.forward(rel_inputs), 1)
+        tree_state, loss = self.childsumtreelstm(tree, sent_emb, training)
         state, hidden = tree_state
         output = tree.output
         return output, loss

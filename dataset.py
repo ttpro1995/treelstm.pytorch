@@ -140,8 +140,10 @@ class SSTDataset(data.Dataset):
         # label = deepcopy(self.labels[index])
         tree = deepcopy(self.trees[index])
         sent = deepcopy(self.sentences[index])
+        tag = deepcopy(self.tags[index])
+        rel = deepcopy(self.rels[index])
         label = deepcopy(self.labels[index])
-        return (tree, sent, label)
+        return (tree, sent, tag, rel, label)
 
     def read_sentences(self, filename):
         with open(filename,'r') as f:
