@@ -89,7 +89,7 @@ def main():
     if os.path.isfile(dev_file):
         dev_dataset = torch.load(dev_file)
     else:
-        dev_dataset = SSTDataset(dev_dir, vocab, args.num_classes, args.fine_grain)
+        dev_dataset = SSTDataset(dev_dir, vocab, tagvocab, relvocab, args.num_classes, args.fine_grain)
         torch.save(dev_dataset, dev_file)
         is_preprocessing_data = True
 
@@ -98,7 +98,7 @@ def main():
     if os.path.isfile(test_file):
         test_dataset = torch.load(test_file)
     else:
-        test_dataset = SSTDataset(test_dir, vocab, args.num_classes, args.fine_grain)
+        test_dataset = SSTDataset(test_dir, vocab, tagvocab, relvocab, args.num_classes, args.fine_grain)
         torch.save(test_dataset, test_file)
         is_preprocessing_data = True
 

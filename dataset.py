@@ -108,12 +108,18 @@ class SSTDataset(data.Dataset):
             # only get pos or neg
             new_trees = []
             new_sentences = []
+            new_tags = []
+            new_rels = []
             for i in range(len(temp_trees)):
                 if temp_trees[i].gold_label != 1: # 0 neg, 1 neutral, 2 pos
                     new_trees.append(temp_trees[i])
                     new_sentences.append(temp_sentences[i])
+                    new_tags.append(temp_tags[i])
+                    new_rels.append(temp_rels[i])
             self.trees = new_trees
             self.sentences = new_sentences
+            self.tags = new_tags
+            self.rels = new_rels
         else:
             self.trees = temp_trees
             self.sentences = temp_sentences
@@ -165,7 +171,7 @@ class SSTDataset(data.Dataset):
         indices = self.relvocab.convertToIdx(line.split(), Constants.UNK_WORD)
         return torch.LongTensor(indices)
 
-    def read_trees(self, filename_parents, filename_labels, filename_tag, filename_rel):
+    def read_trees(self, filename_parents, filename_labels):
         pfile = open(filename_parents, 'r') # parent node
         lfile = open(filename_labels, 'r') # label node
         p = pfile.readlines()
