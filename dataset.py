@@ -87,13 +87,17 @@ class SICKDataset(data.Dataset):
 
 # Dataset class for SICK dataset
 class SSTDataset(data.Dataset):
-    def __init__(self, path, vocab, num_classes, fine_grain):
+    def __init__(self, path, vocab, tagvocab, relvocab , num_classes, fine_grain):
         super(SSTDataset, self).__init__()
         self.vocab = vocab
         self.num_classes = num_classes
         self.fine_grain = fine_grain
+        self.tagvocab = tagvocab
+        self.relvocab = relvocab
 
         temp_sentences = self.read_sentences(os.path.join(path,'sents.toks'))
+        temp_tags = self.read_tags(os.path.join(path,'tags.txt'))
+        temp_rels = self.read_rels(os.path.join(path, 'rels.txt'))
 
         temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
 
@@ -138,11 +142,30 @@ class SSTDataset(data.Dataset):
             sentences = [self.read_sentence(line) for line in tqdm(f.readlines())]
         return sentences
 
+    def read_tags(self, filename):
+        with open(filename,'r') as f:
+            sentences = [self.read_tag(line) for line in tqdm(f.readlines())]
+        return sentences
+
+    def read_rels(self, filename):
+        with open(filename, 'r') as f:
+            sentences = [self.read_rel(line) for line in tqdm(f.readlines())]
+        return sentences
+
+
     def read_sentence(self, line):
         indices = self.vocab.convertToIdx(line.split(), Constants.UNK_WORD)
         return torch.LongTensor(indices)
 
-    def read_trees(self, filename_parents, filename_labels):
+    def read_tag(self, line):
+        indices = self.tagvocab.convertToIdx(line.split(), Constants.UNK_WORD)
+        return torch.LongTensor(indices)
+
+    def read_rel(self, line):
+        indices = self.relvocab.convertToIdx(line.split(), Constants.UNK_WORD)
+        return torch.LongTensor(indices)
+
+    def read_trees(self, filename_parents, filename_labels, filename_tag, filename_rel):
         pfile = open(filename_parents, 'r') # parent node
         lfile = open(filename_labels, 'r') # label node
         p = pfile.readlines()

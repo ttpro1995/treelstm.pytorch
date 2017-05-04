@@ -80,7 +80,7 @@ def main():
     if os.path.isfile(train_file):
         train_dataset = torch.load(train_file)
     else:
-        train_dataset = SSTDataset(train_dir, vocab, args.num_classes, args.fine_grain)
+        train_dataset = SSTDataset(train_dir, vocab, tagvocab, relvocab, args.num_classes, args.fine_grain)
         torch.save(train_dataset, train_file)
         is_preprocessing_data = True
 
@@ -105,7 +105,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
     # initialize model, criterion/loss_function, optimizer
     model = TreeLSTMSentiment(
-                args.cuda, vocab.size(),
+                args.cuda, vocab.size(), tagvocab.size(),relvocab.size(),
                 args.input_dim, args.mem_dim,
                 args.num_classes, criterion
             )

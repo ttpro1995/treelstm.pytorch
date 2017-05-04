@@ -160,7 +160,7 @@ class TreeLSTMSentiment(nn.Module):
 
         # embedding for postag and rel
         self.postag_emb = nn.Embedding(postag_vocabsize, in_dim)
-        self.rel_emb = nn.Embedding(rel_vocabsize)
+        self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
 
     def forward(self, tree, inputs, training = False):
         tree_state, loss = self.childsumtreelstm(tree, inputs, training)
