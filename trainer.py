@@ -34,9 +34,11 @@ class SentimentTrainer(object):
                 target = target.cuda()
             output, err = self.model.forward(tree, input, tag_input, rel_input, training = True)
             params = self.model.childsumtreelstm.getParameters()
-            params_norm = params.norm()
+            params_norm = params.norm().data[0] # we do not need variable here, params_norm is float, prevent GPU-memory leak
+            params = None # prevent GPU-memory leak
             # err = self.criterion(output, target) we calculate loss in the tree already
-            loss += err.data[0] + 0.5*self.args.reg*params_norm*params_norm
+            err = err + 0.5*self.args.reg*params_norm*params_norm # custom bias
+            loss += err.data[0] #
             err.backward()
             k += 1
             if k%self.args.batchsize==0:
