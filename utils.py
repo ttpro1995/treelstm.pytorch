@@ -74,7 +74,7 @@ def count_param(model):
     for p in params:
         sum_param+= p.numel()
         print (p.size())
-    emb_sum = params[0].numel()
-    sum_param-= emb_sum
+    # emb_sum = params[0].numel()
+    # sum_param-= emb_sum
     print ('sum', sum_param)
     print('____________')

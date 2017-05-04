@@ -2,16 +2,17 @@ from tqdm import tqdm
 import torch
 from torch.autograd import Variable as Var
 from utils import map_label_to_target, map_label_to_target_sentiment
-
+import torch.nn.functional as F
 
 class SentimentTrainer(object):
     """
     For Sentiment module
     """
-    def __init__(self, args, model, criterion, optimizer):
+    def __init__(self, args, model, embedding_model ,criterion, optimizer):
         super(SentimentTrainer, self).__init__()
         self.args       = args
         self.model      = model
+        self.embedding_model = embedding_model
         self.criterion  = criterion
         self.optimizer  = optimizer
         self.epoch      = 0
@@ -19,6 +20,8 @@ class SentimentTrainer(object):
     # helper function for training
     def train(self, dataset):
         self.model.train()
+        self.embedding_model.train()
+        self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
@@ -29,12 +32,15 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output, err = self.model.forward(tree, input, training = True)
+            emb = F.torch.unsqueeze(self.embedding_model(input),1)
+            output, err = self.model.forward(tree, emb, training = True)
             # err = self.criterion(output, target) we calculate loss in the tree already
             loss += err.data[0]
             err.backward()
             k += 1
             if k%self.args.batchsize==0:
+                for f in self.embedding_model.parameters():
+                    f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
                 self.optimizer.zero_grad()
         self.epoch += 1
@@ -43,6 +49,7 @@ class SentimentTrainer(object):
     # helper function for testing
     def test(self, dataset):
         self.model.eval()
+        self.embedding_model.eval()
         loss = 0
         predictions = torch.zeros(len(dataset))
         predictions = predictions
@@ -54,7 +61,8 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output, _ = self.model(tree, input) # size(1,5)
+            emb = F.torch.unsqueeze(self.embedding_model(input),1)
+            output, _ = self.model(tree, emb) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
             output[:,1] = -9999 # no need middle (neutral) value

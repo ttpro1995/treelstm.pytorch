@@ -13,11 +13,8 @@ class ChildSumTreeLSTM(nn.Module):
         self.in_dim = in_dim
         self.mem_dim = mem_dim
 
-        self.emb = nn.Embedding(vocab_size,in_dim,
-                                padding_idx=Constants.PAD)
-
-        for param in self.emb.parameters():
-            param.requires_grad = False
+        # self.emb = nn.Embedding(vocab_size,in_dim,
+        #                         padding_idx=Constants.PAD)
 
         self.ix = nn.Linear(self.in_dim,self.mem_dim)
         self.ih = nn.Linear(self.mem_dim,self.mem_dim)
@@ -57,16 +54,16 @@ class ChildSumTreeLSTM(nn.Module):
 
         return c,h
 
-    def forward(self, tree, inputs, training = False):
+    def forward(self, tree, embs, training = False):
         # add singleton dimension for future call to node_forward
-        embs = F.torch.unsqueeze(self.emb(inputs),1)
+        # embs = F.torch.unsqueeze(self.emb(inputs),1)
 
         loss = Var(torch.zeros(1)) # init zero loss
         if self.cudaFlag:
             loss = loss.cuda()
 
         for idx in xrange(tree.num_children):
-            _, child_loss = self.forward(tree.children[idx], inputs, training)
+            _, child_loss = self.forward(tree.children[idx], embs, training)
             loss = loss + child_loss
         child_c, child_h = self.get_child_states(tree)
         tree.state = self.node_forward(embs[tree.idx-1], child_c, child_h)
