@@ -16,6 +16,9 @@ class ChildSumTreeLSTM(nn.Module):
         self.emb = nn.Embedding(vocab_size,in_dim,
                                 padding_idx=Constants.PAD)
 
+        for param in self.emb.parameters():
+            param.requires_grad = False
+
         self.ix = nn.Linear(self.in_dim,self.mem_dim)
         self.ih = nn.Linear(self.mem_dim,self.mem_dim)
 

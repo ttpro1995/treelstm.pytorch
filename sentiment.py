@@ -102,9 +102,9 @@ def main():
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':
-        optimizer   = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+        optimizer   = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
     elif args.optim=='adagrad':
-        optimizer   = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
+        optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
     metrics = Metrics(args.num_classes)
 
     utils.count_param(model)
@@ -143,13 +143,16 @@ def main():
 
     for epoch in range(args.epochs):
         train_loss             = trainer.train(train_dataset)
-        # train_loss, train_pred = trainer.test(dev_dataset)
+        train_loss, train_pred = trainer.test(train_dataset)
         dev_loss, dev_pred     = trainer.test(dev_dataset)
         test_loss, test_pred   = trainer.test(test_dataset)
+
         # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
+        train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
         dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
         print('==> Train loss   : %f \t' % train_loss, end="")
+        print('Epoch ', epoch, 'train percentage ', train_acc)
         print('Epoch ',epoch, 'dev percentage ',dev_acc )
         print('Epoch ', epoch, 'test percentage ', test_acc)
 
