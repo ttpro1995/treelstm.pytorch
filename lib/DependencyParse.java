@@ -71,7 +71,6 @@ public class DependencyParse {
     long start = System.currentTimeMillis();
     while (stdin.hasNextLine()) {
       String line = stdin.nextLine();
-      System.out.println(line);
       List<HasWord> tokens = new ArrayList<>();
       if (tokenize) {
         PTBTokenizer<Word> tokenizer = new PTBTokenizer(
@@ -85,7 +84,7 @@ public class DependencyParse {
         }
       }
       
-      System.out.println("done token ");
+      
 
       List<TaggedWord> tagged = tagger.tagSentence(tokens);
       
@@ -106,7 +105,7 @@ public class DependencyParse {
         parents[i] = -1;
       }
       
-      System.out.println("done token 2");
+      
 
       String[] relns = new String[len];
       for (TypedDependency td : tdl) {
@@ -117,7 +116,7 @@ public class DependencyParse {
         parents[child - 1] = parent;
       }
       
-      System.out.println("done token 3 ");
+      
       
       // print tokens
       sb = new StringBuilder();
@@ -137,7 +136,7 @@ public class DependencyParse {
       sb.append('\n');
       tokWriter.write(sb.toString());
       
-      System.out.println("done print token ");
+      
 
       // print parent pointers
       sb = new StringBuilder();
@@ -165,7 +164,7 @@ public class DependencyParse {
         System.err.printf("Parsed %d lines (%.2fs)\n", count, elapsed);
       }
       
-      System.out.println("end of while loop ");
+      
     }
 
     long totalTimeMillis = System.currentTimeMillis() - start;
