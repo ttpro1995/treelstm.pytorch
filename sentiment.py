@@ -40,8 +40,8 @@ def main():
         args.num_classes = 5 # 0 1 2 3 4
     else:
         args.num_classes = 3 # 0 1 2 (1 neutral)
-    # args.cuda = args.cuda and torch.cuda.is_available()
-    args.cuda = False
+    args.cuda = args.cuda and torch.cuda.is_available()
+    # args.cuda = False
     print(args)
     torch.manual_seed(args.seed)
     if args.cuda:
@@ -142,7 +142,7 @@ def main():
     trainer     = SentimentTrainer(args, model, criterion, optimizer)
 
     for epoch in range(args.epochs):
-        train_loss             = trainer.train(dev_dataset)
+        train_loss             = trainer.train(train_dataset)
         # train_loss, train_pred = trainer.test(dev_dataset)
         dev_loss, dev_pred     = trainer.test(dev_dataset)
         test_loss, test_pred   = trainer.test(test_dataset)
