@@ -53,12 +53,23 @@ def main():
 
     # write unique words from all token files
     token_files = [os.path.join(split, 'sents.toks') for split in [train_dir, dev_dir, test_dir]]
+    rel_token_files = [os.path.join(split, 'rels.txt') for split in [train_dir, dev_dir, test_dir]]
+    tag_token_files = [os.path.join(split, 'tags.txt') for split in [train_dir, dev_dir, test_dir]]
     vocab_file = os.path.join(args.data,'vocab.txt')
+    rel_vocab_file = os.path.join(args.data, 'relvocab.txt')
+    tag_vocab_file = os.path.join(args.data, 'tagvocab.txt')
     build_vocab(token_files, vocab_file)
+    build_vocab(rel_token_files, rel_vocab_file)
+    build_vocab(tag_token_files, tag_vocab_file)
 
     # get vocab object from vocab file previously written
     vocab = Vocab(filename=vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
+    relvocab = Vocab(filename=rel_vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
+    tagvocab = Vocab(filename=tag_vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
     print('==> SST vocabulary size : %d ' % vocab.size())
+    print('==> SST rel vocabulary size : %d ' % relvocab.size())
+    print('==> SST tag vocabulary size : %d ' % tagvocab.size())
+
 
     # Load SST dataset splits
 
