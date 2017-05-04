@@ -313,9 +313,10 @@ def dependency_parse(filepath, cp='', tokenize=True):
     tokpath = os.path.join(dirpath, filepre + '.toks')
     parentpath = os.path.join(dirpath, 'dparents.txt')
     relpath =  os.path.join(dirpath, 'rels.txt')
+    tagpath = os.path.join(dirpath, 'tags.txt')
     tokenize_flag = '-tokenize - ' if tokenize else ''
-    cmd = ('java -cp %s DependencyParse -tokpath %s -parentpath %s -relpath %s %s < %s'
-        % (cp, tokpath, parentpath, relpath, tokenize_flag, filepath))
+    cmd = ('java -cp %s DependencyParse -tokpath %s -parentpath %s -relpath %s -tagpath %s %s < %s'
+        % (cp, tokpath, parentpath, relpath, tagpath, tokenize_flag, filepath))
     os.system(cmd)
 
 if __name__ == '__main__':
