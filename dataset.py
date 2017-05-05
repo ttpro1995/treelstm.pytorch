@@ -99,7 +99,7 @@ class SSTDataset(data.Dataset):
         temp_tags = self.read_tags(os.path.join(path,'tags.txt'))
         temp_rels = self.read_rels(os.path.join(path, 'rels.txt'))
 
-        temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
+        temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'), temp_tags, temp_rels)
 
         # self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
         self.labels = []
@@ -173,13 +173,13 @@ class SSTDataset(data.Dataset):
         indices = self.relvocab.convertToIdx(line.split(), Constants.UNK_WORD)
         return torch.LongTensor(indices)
 
-    def read_trees(self, filename_parents, filename_labels):
+    def read_trees(self, filename_parents, filename_labels, tags, rels):
         pfile = open(filename_parents, 'r') # parent node
         lfile = open(filename_labels, 'r') # label node
         p = pfile.readlines()
         l = lfile.readlines()
-        pl = zip(p, l) # (parent, label) tuple
-        trees = [self.read_tree(p_line, l_line) for p_line, l_line in tqdm(pl)]
+        pl = zip(p, l, tags, rels) # (parent, label) tuple
+        trees = [self.read_tree(p_line, l_line, tags, rels) for p_line, l_line, tags, rels in tqdm(pl)]
 
         return trees
 
@@ -198,7 +198,7 @@ class SSTDataset(data.Dataset):
                 elif tmp >0 :
                     return 2
 
-    def read_tree(self, line, label_line):
+    def read_tree(self, line, label_line, tags, rels):
         # TODO: read gold label
         parents = map(int,line.split()) # split each number and turn to int
         trees = dict()
@@ -219,6 +219,8 @@ class SSTDataset(data.Dataset):
                     trees[idx-1] = tree
                     tree.idx = idx-1
                     tree.gold_label = labels[idx-1] # add node label
+                    tree.tags = tags[idx-1]
+                    tree.rels = rels[idx-1]
                     #if trees[parent-1] is not None:
                     if parent-1 in trees.keys():
                         trees[parent-1].add_child(tree)
