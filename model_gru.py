@@ -40,6 +40,25 @@ class TreeSimpleGRU(nn.Module):
         self.criterion = criterion
         self.output_module = None
 
+
+    def getParameters(self):
+        """
+        Get flatParameters
+        note that getParameters and parameters is not equal in this case
+        getParameters do not get parameters of output module
+        :return: 1d tensor
+        """
+        params = []
+        for m in [self.gru_cell, self.gru_at]:
+            # we do not get param of output module
+            l = list(m.parameters())
+            params.extend(l)
+
+        one_dim = [p.view(p.numel()) for p in params]
+        params = F.torch.cat(one_dim)
+        return params
+
+
     def set_output_module(self, output_module):
         self.output_module = output_module
 
@@ -174,6 +193,9 @@ class TreeGRUSentiment(nn.Module):
         # embedding for postag and rel
         self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
         self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
+
+    def get_tree_parameters(self):
+        return self.tree_module.getParameters()
 
     def forward(self, tree, sent_inputs, tag_inputs, rel_inputs, training = False):
         sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
