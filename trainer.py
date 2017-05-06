@@ -32,7 +32,8 @@ class SentimentTrainer(object):
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
-            output, err = self.model.forward(tree, input, tag_input, rel_input, training = True)
+            emb = F.torch.unsqueeze(self.embedding_model(input), 1)
+            output, err = self.model.forward(tree, emb, training = True)
             params = self.model.childsumtreelstm.getParameters()
             params_norm = params.norm().data[0] # we do not need variable here, params_norm is float, prevent GPU-memory leak
             params = None # prevent GPU-memory leak
