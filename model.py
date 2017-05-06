@@ -27,7 +27,21 @@ class ChildSumTreeLSTM(nn.Module):
 
         self.ux = nn.Linear(self.in_dim,self.mem_dim)
         self.uh = nn.Linear(self.mem_dim,self.mem_dim)
-        # TODO: output module ?
+
+
+        if self.cudaFlag:
+            self.ix = self.ix.cuda()
+            self.ih = self.ih.cuda()
+
+            self.fx = self.fx.cuda()
+            self.fh = self.fh.cuda()
+
+            self.ox = self.ox.cuda()
+            self.oh = self.oh.cuda()
+
+            self.ux = self.ux.cuda()
+            self.uh = self.uh.cuda()
+
         self.criterion = criterion
         self.output_module = None
 
@@ -191,3 +205,4 @@ class TreeLSTMSentiment(nn.Module):
         state, hidden = tree_state
         output = tree.output
         return output, loss
+
