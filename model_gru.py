@@ -26,13 +26,22 @@ from model import SentimentModule
 
 
 class TreeSimpleGRU(nn.Module):
-    def __init__(self, cuda,in_dim, mem_dim, num_class):
+    def __init__(self, cuda,in_dim, mem_dim, criterion):
         super(TreeSimpleGRU, self).__init__()
         self.cudaFlag = cuda
         self.gru_cell = nn.GRUCell(in_dim*2, mem_dim)
-        self.gru_at = GRU_AT(self.cudaFlag, in_dim*4)
+        self.gru_at = GRU_AT(self.cudaFlag, in_dim*3 + mem_dim, mem_dim)
         self.mem_dim = mem_dim
         self.in_dim = in_dim
+
+        if self.cudaFlag:
+            self.gru_cell = self.gru_cell.cuda()
+
+        self.criterion = criterion
+        self.output_module = None
+
+    def set_output_module(self, output_module):
+        self.output_module = output_module
 
     def forward(self, tree, w_emb, tag_emb, rel_emb, training = False):
         loss = Var(torch.zeros(1))  # init zero loss
@@ -44,7 +53,7 @@ class TreeSimpleGRU(nn.Module):
             loss = loss + child_loss
 
         if tree.num_children > 0:
-            child_rels, child_k  = self.get_child_states(tree)
+            child_rels, child_k  = self.get_child_state(tree)
             tree.state = self.node_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1], child_rels, child_k)
         elif tree.num_children == 0:
             tree.state = self.leaf_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1])
@@ -61,25 +70,28 @@ class TreeSimpleGRU(nn.Module):
 
 
     def leaf_forward(self, word_emb, tag_emb):
-        h = torch.rand(1, self.mem_dim)
-        x = F.torch.cat([word_emb, tag_emb])
+        h = Var(torch.rand(1, self.mem_dim))
+        if self.cudaFlag:
+            h = h.cuda()
+        x = F.torch.cat([word_emb, tag_emb], 1)
         k = self.gru_cell(x, h)
         return k
 
 
     def node_forward(self, word_emb, tag_emb, child_rels, child_k):
         n_child = child_k.size(0)
-        h = torch.zeros(1, self.mem_dim)
+        h = Var(torch.zeros(1, self.mem_dim))
+        if self.cudaFlag:
+            h = h.cuda()
+
         for i in range(0, n_child):
             rel = child_rels[i]
             k = child_k[i]
-            x = F.torch.cat([word_emb, tag_emb, rel, k])
+            x = F.torch.cat([word_emb, tag_emb, rel, k], 1)
             h = self.gru_at(x, h)
         k = h
 
         return k
-
-
 
     def get_child_state(self, tree):
         """
@@ -97,7 +109,7 @@ class TreeSimpleGRU(nn.Module):
                 child_rels = child_rels.cuda()
             for idx in xrange(tree.num_children):
                 child_k[idx] = tree.children[idx].state
-                child_rels[idx] = tree.children[idx].state
+                child_rels[idx] = tree.children[idx].rels
         return child_rels, child_k
 
 class AT(nn.Module):
@@ -123,13 +135,14 @@ class AT(nn.Module):
 
 
 class GRU_AT(nn.Module):
-    def __init__(self, cuda, dim):
+    def __init__(self, cuda, in_dim, mem_dim):
         super(GRU_AT, self).__init__()
         self.cudaFlag = cuda
-        self.dim = dim
+        self.in_dim = in_dim
+        self.mem_dim = mem_dim
 
-        self.at = AT(cuda, dim)
-        self.gru_cell = nn.GRUCell(dim, dim)
+        self.at = AT(cuda, in_dim, mem_dim)
+        self.gru_cell = nn.GRUCell(in_dim, mem_dim)
 
         if self.cudaFlag:
             self.at = self.at.cuda()
@@ -151,7 +164,7 @@ class TreeGRUSentiment(nn.Module):
     def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize , in_dim, mem_dim, num_classes, criterion):
         super(TreeGRUSentiment, self).__init__()
         self.cudaFlag = cuda
-        self.tree_module = TreeSimpleGRU(cuda, vocab_size, in_dim, mem_dim, criterion)
+        self.tree_module = TreeSimpleGRU(cuda, in_dim, mem_dim, criterion)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
         self.tree_module.set_output_module(self.output_module)
 
@@ -166,8 +179,7 @@ class TreeGRUSentiment(nn.Module):
         sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
         tag_emb = F.torch.unsqueeze(self.tag_emb.forward(tag_inputs), 1)
         rel_emb = F.torch.unsqueeze(self.rel_emb.forward(rel_inputs), 1)
-        tree_state, loss = self.childsumtreelstm(tree, sent_emb, training)
-        state, hidden = tree_state
+        tree_state, loss = self.tree_module(tree, sent_emb, tag_emb, rel_emb, training)
         output = tree.output
         return output, loss
 
