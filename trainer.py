@@ -38,7 +38,7 @@ class SentimentTrainer(object):
             params_norm = params.norm().data[0] # we do not need variable here, params_norm is float, prevent GPU-memory leak
             params = None # prevent GPU-memory leak
             # err = self.criterion(output, target) we calculate loss in the tree already
-            err = err + 0.5*self.args.e*params_norm*params_norm # custom bias
+            err = err + 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
             err.backward()
             k += 1
