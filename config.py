@@ -43,7 +43,7 @@ def parse_args(type=0):
         parser.add_argument('--wd', default=0, type=float,
                             help='weight decay (default: 0)')
         parser.add_argument('--reg', default=1e-4, type=float,
-                            help='l2 l2 regularization (default: 1e-4)')
+                            help='l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
         parser.add_argument('--seed', default=123, type=int,
