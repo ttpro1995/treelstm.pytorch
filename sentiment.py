@@ -53,11 +53,11 @@ def main():
 
     # write unique words from all token files
     token_files = [os.path.join(split, 'sents.toks') for split in [train_dir, dev_dir, test_dir]]
-    vocab_file = os.path.join(args.data,'vocab.txt')
-    build_vocab(token_files, vocab_file)
+    vocab_file = os.path.join(args.data,'vocab-cased.txt') # use vocab-cased
+    # build_vocab(token_files, vocab_file) NO, DO NOT BUILD VOCAB,  USE OLD VOCAB
 
     # get vocab object from vocab file previously written
-    vocab = Vocab(filename=vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
+    vocab = Vocab(filename=vocab_file)
     print('==> SST vocabulary size : %d ' % vocab.size())
 
     # Load SST dataset splits
@@ -99,8 +99,11 @@ def main():
                 args.num_classes, criterion
             )
 
-    embedding_model = nn.Embedding(vocab.size(), args.input_dim,
-                                padding_idx=Constants.PAD)
+    # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
+    #                             padding_idx=Constants.PAD)
+
+    embedding_model = nn.Embedding(vocab.size(), args.input_dim)
+
     if args.cuda:
         embedding_model = embedding_model.cuda()
 
@@ -125,8 +128,8 @@ def main():
         print('==> GLOVE vocabulary size: %d ' % glove_vocab.size())
         emb = torch.Tensor(vocab.size(),glove_emb.size(1)).normal_(-0.05,0.05)
         # zero out the embeddings for padding and other special words if they are absent in vocab
-        for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
-            emb[idx].zero_()
+        # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
+        #     emb[idx].zero_()
         for word in vocab.labelToIdx.keys():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
