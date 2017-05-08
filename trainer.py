@@ -8,18 +8,23 @@ class SentimentTrainer(object):
     """
     For Sentiment module
     """
-    def __init__(self, args, model ,criterion, optimizer):
+    def __init__(self, args, model, embedding_model, criterion, optimizer):
         super(SentimentTrainer, self).__init__()
         self.args       = args
         self.model      = model
         self.criterion  = criterion
         self.optimizer  = optimizer
         self.epoch      = 0
+        self.embedding_model = embedding_model
+
 
     # helper function for training
     def train(self, dataset):
         self.model.train()
+        self.embedding_model.train()
         self.optimizer.zero_grad()
+        self.embedding_model.zero_grad()
+
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
@@ -33,7 +38,8 @@ class SentimentTrainer(object):
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
                 target = target.cuda()
-            output, err = self.model.forward(tree, input, tag_input, rel_input, training = True)
+            sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
+            output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
             params = self.model.get_tree_parameters()
             params_norm = params.norm().data[0] # we do not need variable here, params_norm is float, prevent GPU-memory leak
             params = None # prevent GPU-memory leak
@@ -43,7 +49,10 @@ class SentimentTrainer(object):
             err.backward()
             k += 1
             if k%self.args.batchsize==0:
+                for f in self.embedding_model.parameters():
+                    f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
+                self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
         self.epoch += 1
         return loss/len(dataset)
@@ -66,7 +75,8 @@ class SentimentTrainer(object):
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
                 target = target.cuda()
-            output, _ = self.model(tree, input, tag_input, rel_input) # size(1,5)
+            sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
+            output, _ = self.model(tree, sent_emb, tag_emb, rel_emb) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
             output[:,1] = -9999 # no need middle (neutral) value

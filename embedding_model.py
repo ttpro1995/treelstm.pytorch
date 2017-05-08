@@ -4,13 +4,19 @@ import torch.nn.functional as F
 import Constants
 
 class EmbeddingModel(nn.Module):
-    def __init__(self,vocab_size, tag_vocabsize, rel_vocabsize , in_dim,):
+    def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize , in_dim,):
         super(EmbeddingModel, self).__init__()
+        self.cudaFlag = cuda
         self.word_embedding = nn.Embedding(vocab_size,in_dim,
                                 padding_idx=Constants.PAD)
         # embedding for postag and rel
         self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
         self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
+
+        if self.cudaFlag:
+            self.word_embedding = self.word_embedding.cuda()
+            self.tag_emb = self.tag_emb.cuda()
+            self.rel_emb = self.rel_emb.cuda()
 
     def forward(self, sent_inputs, tag_inputs, rel_inputs):
         sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)

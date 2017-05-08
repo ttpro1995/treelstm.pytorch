@@ -5,6 +5,7 @@ from torch.autograd import Variable as Var
 import utils
 import Constants
 from model import SentimentModule
+from embedding_model import EmbeddingModel
 
 # class GRU(nn.Module):
 #     def __init__(self, cuda,in_dim, mem_dim, num_class):
@@ -208,19 +209,24 @@ class TreeGRUSentiment(nn.Module):
         self.tree_module.set_output_module(self.output_module)
 
         # word embeddiing
-        self.word_embedding = nn.Embedding(vocab_size,in_dim,
-                                padding_idx=Constants.PAD)
-        # embedding for postag and rel
-        self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
-        self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
+        # self.word_embedding = nn.Embedding(vocab_size,in_dim,
+        #                         padding_idx=Constants.PAD)
+        # # embedding for postag and rel
+        # self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
+        # self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
+
+        # self.embedding_model = EmbeddingModel(vocab_size, tag_vocabsize, rel_vocabsize, in_dim)
+
 
     def get_tree_parameters(self):
         return self.tree_module.getParameters()
 
-    def forward(self, tree, sent_inputs, tag_inputs, rel_inputs, training = False):
-        sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
-        tag_emb = F.torch.unsqueeze(self.tag_emb.forward(tag_inputs), 1)
-        rel_emb = F.torch.unsqueeze(self.rel_emb.forward(rel_inputs), 1)
+    def forward(self, tree, sent_emb, tag_emb, rel_emb, training = False):
+        # sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
+        # tag_emb = F.torch.unsqueeze(self.tag_emb.forward(tag_inputs), 1)
+        # rel_emb = F.torch.unsqueeze(self.rel_emb.forward(rel_inputs), 1)
+        # sent_emb, tag_emb, rel_emb = self.embedding_model(sent_inputs, tag_inputs, rel_inputs)
+
         tree_state, loss = self.tree_module(tree, sent_emb, tag_emb, rel_emb, training)
         output = tree.output
         return output, loss

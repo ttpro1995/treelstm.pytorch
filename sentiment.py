@@ -32,6 +32,8 @@ from config import parse_args
 # TRAIN AND TEST HELPER FUNCTIONS
 from trainer import SentimentTrainer
 
+from embedding_model import EmbeddingModel
+
 # MAIN BLOCK
 def main():
     global args
@@ -114,6 +116,8 @@ def main():
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
     #                             padding_idx=Constants.PAD)
 
+    embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), relvocab.size(), args.input_dim)
+
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':
@@ -155,25 +159,40 @@ def main():
     # model.childsumtreelstm.emb.state_dict()['weight'].copy_(emb)
     # embedding_model.state_dict()['weight'].copy_(emb)
     # initialize word embeding
-    model.word_embedding.state_dict()['weight'].copy_(emb)
+
+    # model.embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
+    embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
 
     # create trainer object for training and testing
-    trainer     = SentimentTrainer(args, model, criterion, optimizer)
+    trainer     = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
 
-    for epoch in range(args.epochs):
-        train_loss             = trainer.train(train_dataset)
-        train_loss, train_pred = trainer.test(train_dataset)
-        dev_loss, dev_pred     = trainer.test(dev_dataset)
-        test_loss, test_pred   = trainer.test(test_dataset)
+    mode = 'NOPE'
+    if mode == 'DEBUG':
+        for epoch in range(args.epochs):
+            dev_loss = trainer.train(dev_dataset)
+            dev_loss, dev_pred = trainer.test(dev_dataset)
+            test_loss, test_pred = trainer.test(test_dataset)
 
-        # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
-        train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
-        dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
-        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
-        print('==> Train loss   : %f \t' % train_loss, end="")
-        print('Epoch ', epoch, 'train percentage ', train_acc)
-        print('Epoch ',epoch, 'dev percentage ',dev_acc )
-        print('Epoch ', epoch, 'test percentage ', test_acc)
+            # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
+            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+            print('==> Dev loss   : %f \t' % dev_loss, end="")
+            print('Epoch ', epoch, 'dev percentage ', dev_acc)
+    else:
+        for epoch in range(args.epochs):
+            train_loss             = trainer.train(train_dataset)
+            train_loss, train_pred = trainer.test(train_dataset)
+            dev_loss, dev_pred     = trainer.test(dev_dataset)
+            test_loss, test_pred   = trainer.test(test_dataset)
+
+            # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
+            train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
+            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+            print('==> Train loss   : %f \t' % train_loss, end="")
+            print('Epoch ', epoch, 'train percentage ', train_acc)
+            print('Epoch ',epoch, 'dev percentage ',dev_acc )
+            print('Epoch ', epoch, 'test percentage ', test_acc)
 
 
 
