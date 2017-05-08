@@ -17,6 +17,7 @@ from meowlogtool import log_util
 import Constants
 # NEURAL NETWORK MODULES/LAYERS
 from model_gru import *
+from model import *
 # DATA HANDLING CLASSES
 from tree import Tree
 from vocab import Vocab

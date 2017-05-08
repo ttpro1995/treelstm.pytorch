@@ -26,16 +26,21 @@ from model import SentimentModule
 
 
 class TreeSimpleGRU(nn.Module):
-    def __init__(self, cuda,in_dim, mem_dim, criterion):
+    def __init__(self, cuda,in_dim, mem_dim, criterion, leaf_h = None):
         super(TreeSimpleGRU, self).__init__()
         self.cudaFlag = cuda
         self.gru_cell = nn.GRUCell(in_dim*2, mem_dim)
         self.gru_at = GRU_AT(self.cudaFlag, in_dim*3 + mem_dim, mem_dim)
         self.mem_dim = mem_dim
         self.in_dim = in_dim
+        self.leaf_h = leaf_h # init h for leaf node
+        if self.leaf_h == None:
+            self.leaf_h = Var(torch.rand(1, self.mem_dim))
+            torch.save(self.leaf_h, 'leaf_h.pth')
 
         if self.cudaFlag:
             self.gru_cell = self.gru_cell.cuda()
+            self.leaf_h = self.leaf_h.cuda()
 
         self.criterion = criterion
         self.output_module = None
@@ -72,7 +77,7 @@ class TreeSimpleGRU(nn.Module):
             loss = loss + child_loss
 
         if tree.num_children > 0:
-            child_rels, child_k  = self.get_child_state(tree)
+            child_rels, child_k  = self.get_child_state(tree, rel_emb)
             tree.state = self.node_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1], child_rels, child_k)
         elif tree.num_children == 0:
             tree.state = self.leaf_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1])
@@ -89,7 +94,13 @@ class TreeSimpleGRU(nn.Module):
 
 
     def leaf_forward(self, word_emb, tag_emb):
-        h = Var(torch.rand(1, self.mem_dim))
+        """
+        Forward function for leaf node
+        :param word_emb:  word embedding of current node u
+        :param tag_emb: tag embedding of current node u
+        :return: k of current node u
+        """
+        h = self.leaf_h
         if self.cudaFlag:
             h = h.cuda()
         x = F.torch.cat([word_emb, tag_emb], 1)
@@ -98,6 +109,14 @@ class TreeSimpleGRU(nn.Module):
 
 
     def node_forward(self, word_emb, tag_emb, child_rels, child_k):
+        """
+        Foward function for inner node
+        :param word_emb: word embedding of current node u
+        :param tag_emb: tag embedding of current node u
+        :param child_rels (tensor): rels embedding of child node v
+        :param child_k (tensor): k of child node v
+        :return:
+        """
         n_child = child_k.size(0)
         h = Var(torch.zeros(1, self.mem_dim))
         if self.cudaFlag:
@@ -112,10 +131,11 @@ class TreeSimpleGRU(nn.Module):
 
         return k
 
-    def get_child_state(self, tree):
+    def get_child_state(self, tree, rels_emb):
         """
         Get child rels, get child k
-        :param tree:
+        :param tree: tree we need to get child
+        :param rels_emb (tensor):
         :return:
         """
         if tree.num_children == 0:
@@ -128,7 +148,7 @@ class TreeSimpleGRU(nn.Module):
                 child_rels = child_rels.cuda()
             for idx in xrange(tree.num_children):
                 child_k[idx] = tree.children[idx].state
-                child_rels[idx] = tree.children[idx].rels
+                child_rels[idx] = rels_emb[tree.children[idx].idx - 1]
         return child_rels, child_k
 
 class AT(nn.Module):
