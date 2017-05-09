@@ -222,7 +222,7 @@ class SSTDataset(data.Dataset):
                     tree.tags = tags[idx-1]
                     tree.rels = rels[idx-1]
                     #if trees[parent-1] is not None:
-                    if parent-1 in trees.keys():
+                    if parent in trees.keys():
                         trees[parent].add_child(tree)
                         break
                     elif parent==0:
