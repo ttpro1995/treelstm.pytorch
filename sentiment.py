@@ -66,9 +66,9 @@ def main():
     build_vocab(tag_token_files, tag_vocab_file)
 
     # get vocab object from vocab file previously written
-    vocab = Vocab(filename=vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
-    relvocab = Vocab(filename=rel_vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
-    tagvocab = Vocab(filename=tag_vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
+    vocab = Vocab(filename=vocab_file)
+    relvocab = Vocab(filename=rel_vocab_file)
+    tagvocab = Vocab(filename=tag_vocab_file)
     print('==> SST vocabulary size : %d ' % vocab.size())
     print('==> SST rel vocabulary size : %d ' % relvocab.size())
     print('==> SST tag vocabulary size : %d ' % tagvocab.size())
@@ -140,13 +140,16 @@ def main():
         # load glove embeddings and vocab
         glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove,'glove.840B.300d'))
         print('==> GLOVE vocabulary size: %d ' % glove_vocab.size())
-        emb = torch.Tensor(vocab.size(),glove_emb.size(1)).normal_(-0.05,0.05)
+        emb = torch.zeros(vocab.size(),glove_emb.size(1))
         # zero out the embeddings for padding and other special words if they are absent in vocab
-        for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
-            emb[idx].zero_()
+        # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
+        #     emb[idx].zero_()
+        # torch.manual_seed(555)
         for word in vocab.labelToIdx.keys():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
+            else:
+                emb[vocab.getIndex(word)] = torch.Tensor(emb[vocab.getIndex(word)].size()).normal_(-0.05,0.05)
         torch.save(emb, emb_file)
         is_preprocessing_data = True # flag to quit
         print('done creating emb, quit')

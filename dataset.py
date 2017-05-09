@@ -199,14 +199,14 @@ class SSTDataset(data.Dataset):
                     return 2
 
     def read_tree(self, line, label_line, tags, rels):
-        # TODO: read gold label
+        # trees is dict. So let it be array base 1
         parents = map(int,line.split()) # split each number and turn to int
         trees = dict()
         root = None
         labels = map(self.parse_dlabel_token, label_line.split())
         for i in xrange(1,len(parents)+1):
             #if not trees[i-1] and parents[i-1]!=-1:
-            if i-1 not in trees.keys() and parents[i-1]!=-1:
+            if i not in trees.keys() and parents[i-1]!=-1:
                 idx = i
                 prev = None
                 while True:
@@ -216,14 +216,14 @@ class SSTDataset(data.Dataset):
                     tree = Tree()
                     if prev is not None:
                         tree.add_child(prev)
-                    trees[idx-1] = tree
-                    tree.idx = idx-1
+                    trees[idx] = tree
+                    tree.idx = idx
                     tree.gold_label = labels[idx-1] # add node label
                     tree.tags = tags[idx-1]
                     tree.rels = rels[idx-1]
                     #if trees[parent-1] is not None:
                     if parent-1 in trees.keys():
-                        trees[parent-1].add_child(tree)
+                        trees[parent].add_child(tree)
                         break
                     elif parent==0:
                         root = tree
