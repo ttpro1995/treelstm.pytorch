@@ -37,13 +37,10 @@ class SentimentTrainer(object):
             output, err = self.model.forward(tree, emb, training = True)
             params = self.model.childsumtreelstm.getParameters()
             params_norm = params.norm()
-             # we do not need variable here, params_norm is float, prevent GPU-memory leak
             err = err/self.args.batchsize + 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
             err.backward()
             k += 1
-            # params_norm = None
-            # params = None  # prevent GPU-memory leak
             if k==self.args.batchsize:
                 for f in self.embedding_model.parameters():
                     f.data.sub_(f.grad.data * self.args.emblr)
