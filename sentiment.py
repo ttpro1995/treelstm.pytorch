@@ -112,7 +112,11 @@ def main():
     if args.optim=='adam':
         optimizer   = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
     elif args.optim=='adagrad':
-        optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
+        # optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.Adagrad([
+                {'params': model.parameters(), 'lr': args.lr},
+                {'params': embedding_model.parameters(), 'lr': args.emblr}
+            ], lr=args.lr, weight_decay=args.wd)
     metrics = Metrics(args.num_classes)
 
     utils.count_param(model)

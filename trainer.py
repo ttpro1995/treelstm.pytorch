@@ -42,10 +42,7 @@ class SentimentTrainer(object):
             err.backward()
             k += 1
             if k==self.args.batchsize:
-                for f in self.embedding_model.parameters():
-                    f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
-                self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
                 k = 0
         self.epoch += 1
