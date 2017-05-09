@@ -39,14 +39,14 @@ class SentimentTrainer(object):
                 target = target.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
             output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
-            params = self.model.get_tree_parameters()
-            params_norm = params.norm()
-            err = err/self.args.batchsize + 0.5*self.args.reg*params_norm*params_norm # custom bias
+            #params = self.model.get_tree_parameters()
+            #params_norm = params.norm()
+            err = err/self.args.batchsize #+ 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
             err.backward()
             k += 1
-            params = None
-            params_norm = None
+            #params = None
+            #params_norm = None
             if k==self.args.batchsize:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
