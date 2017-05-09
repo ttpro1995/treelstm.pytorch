@@ -23,7 +23,6 @@ class SentimentTrainer(object):
         self.model.train()
         self.embedding_model.train()
         self.optimizer.zero_grad()
-        self.embedding_model.zero_grad()
 
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
@@ -42,18 +41,16 @@ class SentimentTrainer(object):
             output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
             params = self.model.get_tree_parameters()
             params_norm = params.norm()
-            # err = self.criterion(output, target) we calculate loss in the tree already
             err = err/self.args.batchsize + 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
             err.backward()
             k += 1
             params = None
             params_norm = None
-            if k%self.args.batchsize==0:
-                for f in self.embedding_model.parameters():
-                    f.data.sub_(f.grad.data * self.args.emblr)
+            if k==self.args.batchsize:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
+                k = 0
         self.epoch += 1
         return loss/len(dataset)
 
