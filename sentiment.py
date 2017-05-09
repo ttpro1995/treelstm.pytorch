@@ -38,7 +38,7 @@ from embedding_model import EmbeddingModel
 def main():
     global args
     args = parse_args(type=1)
-    args.input_dim, args.mem_dim = 300, 168
+    args.input_dim, args.mem_dim, args.word_dim, args.tag_dim, args.rel_dim = 300, 150, 300, 20, 20
     if args.fine_grain:
         args.num_classes = 5 # 0 1 2 3 4
     else:
@@ -108,22 +108,25 @@ def main():
     criterion = nn.CrossEntropyLoss()
     # initialize model, criterion/loss_function, optimizer
     model = TreeGRUSentiment(
-                args.cuda, vocab.size(), tagvocab.size(),relvocab.size(),
-                args.input_dim, args.mem_dim,
-                args.num_classes, criterion
+                args.cuda, args.input_dim,
+                args.tag_dim, args.rel_dim,
+        args.mem_dim, args.at_hid_dim ,3, criterion
             )
 
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
     #                             padding_idx=Constants.PAD)
 
-    embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), relvocab.size(), args.input_dim)
+    embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), relvocab.size(), args.word_dim, args.tag_dim, args.rel_dim)
 
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':
         optimizer   = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
     elif args.optim=='adagrad':
-        optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.Adagrad([
+                {'params': model.parameters(), 'lr': args.lr},
+                {'params': embedding_model.parameters(), 'lr': args.emblr}
+            ], lr=args.lr, weight_decay=args.wd)
     metrics = Metrics(args.num_classes)
 
     utils.count_param(model)
@@ -166,7 +169,7 @@ def main():
     # create trainer object for training and testing
     trainer     = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
 
-    mode = 'NOPE'
+    mode = 'REAL'
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             dev_loss = trainer.train(dev_dataset)

@@ -50,6 +50,10 @@ def parse_args(type=0):
                             help='random seed (default: 123)')
         parser.add_argument('--fine_grain', default=False, type=bool,
                             help='fine grained (default False)')
+
+        parser.add_argument('--at_hid_dim', default=100, type=int,
+                            help='fine grained (default False)')
+
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
         cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')
         cuda_parser.add_argument('--no-cuda', dest='cuda', action='store_false')

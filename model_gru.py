@@ -27,13 +27,15 @@ from embedding_model import EmbeddingModel
 
 
 class TreeSimpleGRU(nn.Module):
-    def __init__(self, cuda,in_dim, mem_dim, criterion, leaf_h = None):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion, leaf_h = None):
         super(TreeSimpleGRU, self).__init__()
         self.cudaFlag = cuda
-        self.gru_cell = nn.GRUCell(in_dim*2, mem_dim)
-        self.gru_at = GRU_AT(self.cudaFlag, in_dim*3 + mem_dim, mem_dim)
+        self.gru_cell = nn.GRUCell(word_dim + tag_dim, mem_dim)
+        self.gru_at = GRU_AT(self.cudaFlag, word_dim + tag_dim + rel_dim + mem_dim, at_hid_dim ,mem_dim)
         self.mem_dim = mem_dim
-        self.in_dim = in_dim
+        self.in_dim = word_dim
+        self.tag_dim = tag_dim
+        self.rel_dim = rel_dim
         self.leaf_h = leaf_h # init h for leaf node
         if self.leaf_h == None:
             self.leaf_h = Var(torch.rand(1, self.mem_dim))
@@ -143,7 +145,7 @@ class TreeSimpleGRU(nn.Module):
             assert False #  never get here
         else:
             child_k = Var(torch.Tensor(tree.num_children, 1, self.mem_dim))
-            child_rels = Var(torch.Tensor(tree.num_children, 1, self.in_dim))
+            child_rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
             if self.cudaFlag:
                 child_k = child_k.cuda()
                 child_rels = child_rels.cuda()
@@ -156,14 +158,14 @@ class AT(nn.Module):
     """
     AT(compress_x[v]) := sigmoid(Wa * tanh(Wb * compress_x[v] + bb) + ba)
     """
-    def __init__(self, cuda, in_dim, mem_dim):
+    def __init__(self, cuda, in_dim, hid_dim):
         super(AT, self).__init__()
         self.cudaFlag = cuda
         self.in_dim = in_dim
-        self.mem_dim = mem_dim
+        self.hid_dim = hid_dim
 
-        self.Wa = nn.Linear(mem_dim, mem_dim)
-        self.Wb = nn.Linear(in_dim, mem_dim)
+        self.Wa = nn.Linear(hid_dim, 1)
+        self.Wb = nn.Linear(in_dim, hid_dim)
 
         if self.cudaFlag:
             self.Wa = self.Wa.cuda()
@@ -175,13 +177,13 @@ class AT(nn.Module):
 
 
 class GRU_AT(nn.Module):
-    def __init__(self, cuda, in_dim, mem_dim):
+    def __init__(self, cuda, in_dim, at_hid_dim ,mem_dim):
         super(GRU_AT, self).__init__()
         self.cudaFlag = cuda
         self.in_dim = in_dim
         self.mem_dim = mem_dim
 
-        self.at = AT(cuda, in_dim, mem_dim)
+        self.at = AT(cuda, in_dim, at_hid_dim)
         self.gru_cell = nn.GRUCell(in_dim, mem_dim)
 
         if self.cudaFlag:
@@ -197,14 +199,15 @@ class GRU_AT(nn.Module):
         """
         a = self.at.forward(x)
         m = self.gru_cell(x, h_prev)
-        h = a*m + (1 - a) * h_prev
+        h = torch.mm(a, m) + torch.mm((1-a), h_prev)
+        # h = a*m + (1 - a) * h_prev
         return h
 
 class TreeGRUSentiment(nn.Module):
-    def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize , in_dim, mem_dim, num_classes, criterion):
+    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion):
         super(TreeGRUSentiment, self).__init__()
         self.cudaFlag = cuda
-        self.tree_module = TreeSimpleGRU(cuda, in_dim, mem_dim, criterion)
+        self.tree_module = TreeSimpleGRU(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
         self.tree_module.set_output_module(self.output_module)
 

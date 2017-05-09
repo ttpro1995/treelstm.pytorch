@@ -4,14 +4,14 @@ import torch.nn.functional as F
 import Constants
 
 class EmbeddingModel(nn.Module):
-    def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize , in_dim,):
+    def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize, word_dim, tag_dim, rel_dim):
         super(EmbeddingModel, self).__init__()
         self.cudaFlag = cuda
-        self.word_embedding = nn.Embedding(vocab_size,in_dim,
+        self.word_embedding = nn.Embedding(vocab_size, word_dim,
                                 padding_idx=Constants.PAD)
         # embedding for postag and rel
-        self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
-        self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
+        self.tag_emb = nn.Embedding(tag_vocabsize, tag_dim)
+        self.rel_emb = nn.Embedding(rel_vocabsize, rel_dim)
 
         if self.cudaFlag:
             self.word_embedding = self.word_embedding.cuda()

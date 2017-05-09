@@ -41,18 +41,18 @@ class SentimentTrainer(object):
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
             output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
             params = self.model.get_tree_parameters()
-            params_norm = params.norm().data[0] # we do not need variable here, params_norm is float, prevent GPU-memory leak
-            params = None # prevent GPU-memory leak
+            params_norm = params.norm()
             # err = self.criterion(output, target) we calculate loss in the tree already
-            err = err + 0.5*self.args.reg*params_norm*params_norm # custom bias
+            err = err/self.args.batchsize + 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
             err.backward()
             k += 1
+            params = None
+            params_norm = None
             if k%self.args.batchsize==0:
                 for f in self.embedding_model.parameters():
                     f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
-                self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
         self.epoch += 1
         return loss/len(dataset)
@@ -60,6 +60,7 @@ class SentimentTrainer(object):
     # helper function for testing
     def test(self, dataset):
         self.model.eval()
+        self.embedding_model.eval()
         loss = 0
         predictions = torch.zeros(len(dataset))
         predictions = predictions
