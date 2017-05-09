@@ -6,6 +6,7 @@ import torch.utils.data as data
 from tree import Tree
 from vocab import Vocab
 import Constants
+import utils
 
 # Dataset class for SICK dataset
 class SICKDataset(data.Dataset):
@@ -168,14 +169,16 @@ class SSTDataset(data.Dataset):
                     return 2
 
     def read_tree(self, line, label_line):
-        # TODO: read gold label
+        # FIXED: tree.idx, also tree dict() use base 1 as it was in dataset
+        # parents is list base 0, keep idx-1
+        # labels is list base 0, keep idx-1
         parents = map(int,line.split()) # split each number and turn to int
-        trees = dict()
+        trees = dict() # this is dict
         root = None
         labels = map(self.parse_dlabel_token, label_line.split())
         for i in xrange(1,len(parents)+1):
             #if not trees[i-1] and parents[i-1]!=-1:
-            if i-1 not in trees.keys() and parents[i-1]!=-1:
+            if i not in trees.keys() and parents[i-1]!=-1:
                 idx = i
                 prev = None
                 while True:
@@ -185,12 +188,12 @@ class SSTDataset(data.Dataset):
                     tree = Tree()
                     if prev is not None:
                         tree.add_child(prev)
-                    trees[idx-1] = tree
-                    tree.idx = idx-1
+                    trees[idx] = tree
+                    tree.idx = idx # -1 remove -1 here to prevent embs[tree.idx -1] = -1 while tree.idx = 0
                     tree.gold_label = labels[idx-1] # add node label
                     #if trees[parent-1] is not None:
-                    if parent-1 in trees.keys():
-                        trees[parent-1].add_child(tree)
+                    if parent in trees.keys():
+                        trees[parent].add_child(tree)
                         break
                     elif parent==0:
                         root = tree

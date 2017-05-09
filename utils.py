@@ -78,3 +78,13 @@ def count_param(model):
     # sum_param-= emb_sum
     print ('sum', sum_param)
     print('____________')
+
+def print_tree(tree, level):
+    indent = ''
+    for i in range(level):
+        indent += '| '
+    line = indent + str(tree.idx)
+    print (line)
+    for i in xrange(tree.num_children):
+        print_tree(tree.children[i], level+1)
+

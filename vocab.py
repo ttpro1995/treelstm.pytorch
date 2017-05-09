@@ -25,7 +25,8 @@ class Vocab(object):
             idx += 1
 
     def getIndex(self, key, default=None):
-        key = key.lower() if self.lower else key
+        if self.lower:
+            key = key.lower()
         try:
             return self.labelToIdx[key]
         except KeyError:
@@ -49,7 +50,9 @@ class Vocab(object):
 
     # Add `label` in the dictionary. Use `idx` as its index if given.
     def add(self, label):
-        label = label.lower() if self.lower else label
+        if self.lower:
+            label = label.lower()
+
         if label in self.labelToIdx:
             idx = self.labelToIdx[label]
         else:

@@ -91,7 +91,7 @@ def main():
         torch.save(test_dataset, test_file)
         is_preprocessing_data = True
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.NLLLoss()
     # initialize model, criterion/loss_function, optimizer
     model = TreeLSTMSentiment(
                 args.cuda, vocab.size(),
@@ -123,22 +123,27 @@ def main():
     if os.path.isfile(emb_file):
         emb = torch.load(emb_file)
     else:
+
         # load glove embeddings and vocab
         glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove,'glove.840B.300d'))
         print('==> GLOVE vocabulary size: %d ' % glove_vocab.size())
-        emb = torch.Tensor(vocab.size(),glove_emb.size(1)).normal_(-0.05,0.05)
+        # emb = torch.Tensor(vocab.size(),glove_emb.size(1)).normal_(-0.05,0.05)
+        emb = torch.zeros(vocab.size(),glove_emb.size(1))
         # zero out the embeddings for padding and other special words if they are absent in vocab
         # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
         #     emb[idx].zero_()
+        torch.manual_seed(555)
         for word in vocab.labelToIdx.keys():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
+            else:
+                emb[vocab.getIndex(word)] = torch.Tensor(emb[vocab.getIndex(word)].size()).normal_(-0.05,0.05)
         torch.save(emb, emb_file)
         is_preprocessing_data = True # flag to quit
         print('done creating emb, quit')
 
     if is_preprocessing_data:
-        print ('quit program due to memory leak during preprocess data, please rerun sentiment.py')
+        print ('quit program')
         quit()
 
     # plug these into embedding matrix inside model

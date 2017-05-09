@@ -15,18 +15,20 @@ class ChildSumTreeLSTM(nn.Module):
 
         # self.emb = nn.Embedding(vocab_size,in_dim,
         #                         padding_idx=Constants.PAD)
+        torch.manual_seed(123)
 
         self.ix = nn.Linear(self.in_dim,self.mem_dim)
         self.ih = nn.Linear(self.mem_dim,self.mem_dim)
 
+        self.fh = nn.Linear(self.mem_dim, self.mem_dim)
         self.fx = nn.Linear(self.in_dim,self.mem_dim)
-        self.fh = nn.Linear(self.mem_dim,self.mem_dim)
+
+        self.ux = nn.Linear(self.in_dim,self.mem_dim)
+        self.uh = nn.Linear(self.mem_dim,self.mem_dim)
 
         self.ox = nn.Linear(self.in_dim,self.mem_dim)
         self.oh = nn.Linear(self.mem_dim,self.mem_dim)
 
-        self.ux = nn.Linear(self.in_dim,self.mem_dim)
-        self.uh = nn.Linear(self.mem_dim,self.mem_dim)
         # TODO: output module ?
         self.criterion = criterion
         self.output_module = None
@@ -53,6 +55,8 @@ class ChildSumTreeLSTM(nn.Module):
 
 
     def node_forward(self, inputs, child_c, child_h):
+        # FIXME :
+        # TODO:
         child_h_sum = F.torch.sum(torch.squeeze(child_h,1),0)
 
         i = F.sigmoid(self.ix(inputs)+self.ih(child_h_sum))
@@ -87,14 +91,15 @@ class ChildSumTreeLSTM(nn.Module):
         tree.state = self.node_forward(embs[tree.idx-1], child_c, child_h)
 
         if self.output_module != None:
-            output = self.output_module.forward(tree.state[0], training)
+            output = self.output_module.forward(tree.state[1], training)
             tree.output = output
             if training and tree.gold_label != None:
                 target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
                 if self.cudaFlag:
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
-
+        # TODO: meow, del debug
+        print (tree.idx, loss.data[0])
         return tree.state, loss
 
     def get_child_states(self, tree):
@@ -156,16 +161,18 @@ class SentimentModule(nn.Module):
         self.mem_dim = mem_dim
         self.num_classes = num_classes
         self.dropout = dropout
+        torch.manual_seed(456)
         self.l1 = nn.Linear(self.mem_dim, self.num_classes)
+        self.logsoftmax = nn.LogSoftmax()
         if self.cudaFlag:
             self.l1 = self.l1.cuda()
 
 
     def forward(self, vec, training = False):
         if self.dropout:
-            out = F.log_softmax(self.l1(F.dropout(vec, training = training)))
+            out = self.logsoftmax(self.l1(F.dropout(vec, training = training)))
         else:
-            out = F.log_softmax(self.l1(vec))
+            out = self.logsoftmax(self.l1(vec))
         return out
 
 class TreeLSTMSentiment(nn.Module):
@@ -173,7 +180,7 @@ class TreeLSTMSentiment(nn.Module):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=False)
         self.childsumtreelstm.set_output_module(self.output_module)
 
     def forward(self, tree, inputs, training = False):
