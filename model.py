@@ -15,7 +15,7 @@ class ChildSumTreeLSTM(nn.Module):
 
         # self.emb = nn.Embedding(vocab_size,in_dim,
         #                         padding_idx=Constants.PAD)
-        torch.manual_seed(123)
+        # torch.manual_seed(123)
 
         self.ix = nn.Linear(self.in_dim,self.mem_dim)
         self.ih = nn.Linear(self.mem_dim,self.mem_dim)
@@ -161,7 +161,7 @@ class SentimentModule(nn.Module):
         self.mem_dim = mem_dim
         self.num_classes = num_classes
         self.dropout = dropout
-        torch.manual_seed(456)
+        # torch.manual_seed(456)
         self.l1 = nn.Linear(self.mem_dim, self.num_classes)
         self.logsoftmax = nn.LogSoftmax()
         if self.cudaFlag:
@@ -180,7 +180,7 @@ class TreeLSTMSentiment(nn.Module):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=False)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
         self.childsumtreelstm.set_output_module(self.output_module)
 
     def forward(self, tree, inputs, training = False):

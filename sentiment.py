@@ -43,9 +43,9 @@ def main():
     args.cuda = args.cuda and torch.cuda.is_available()
     # args.cuda = False
     print(args)
-    torch.manual_seed(args.seed)
-    if args.cuda:
-        torch.cuda.manual_seed(args.seed)
+    # torch.manual_seed(args.seed)
+    # if args.cuda:
+        # torch.cuda.manual_seed(args.seed)
 
     train_dir = os.path.join(args.data,'train/')
     dev_dir = os.path.join(args.data,'dev/')
@@ -136,7 +136,7 @@ def main():
         # zero out the embeddings for padding and other special words if they are absent in vocab
         # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
         #     emb[idx].zero_()
-        torch.manual_seed(555)
+        # torch.manual_seed(555)
         for word in vocab.labelToIdx.keys():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]

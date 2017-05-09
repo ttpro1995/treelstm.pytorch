@@ -34,9 +34,9 @@ def main():
     args.hidden_dim, args.num_classes = 50, 5
     args.cuda = args.cuda and torch.cuda.is_available()
     print(args)
-    torch.manual_seed(args.seed)
-    if args.cuda:
-        torch.cuda.manual_seed(args.seed)
+    # torch.manual_seed(args.seed)
+    # if args.cuda:
+        # torch.cuda.manual_seed(args.seed)
 
     train_dir = os.path.join(args.data,'train/')
     dev_dir = os.path.join(args.data,'dev/')
