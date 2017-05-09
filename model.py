@@ -99,7 +99,7 @@ class ChildSumTreeLSTM(nn.Module):
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
         # TODO: meow, del debug
-        print (tree.idx, loss.data[0])
+        # print (tree.idx, loss.data[0])
         return tree.state, loss
 
     def get_child_states(self, tree):

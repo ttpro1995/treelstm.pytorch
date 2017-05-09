@@ -24,6 +24,7 @@ class SentimentTrainer(object):
         self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
+        torch.manual_seed(789)
         indices = torch.randperm(len(dataset))
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             tree, sent, label = dataset[indices[idx]]
@@ -35,19 +36,21 @@ class SentimentTrainer(object):
             emb = F.torch.unsqueeze(self.embedding_model(input), 1)
             output, err = self.model.forward(tree, emb, training = True)
             params = self.model.childsumtreelstm.getParameters()
-            params_norm = params.norm().data[0] # we do not need variable here, params_norm is float, prevent GPU-memory leak
-            params = None # prevent GPU-memory leak
-            # err = self.criterion(output, target) we calculate loss in the tree already
-            err = err + 0.5*self.args.reg*params_norm*params_norm # custom bias
+            params_norm = params.norm()
+             # we do not need variable here, params_norm is float, prevent GPU-memory leak
+            err = err/self.args.batchsize + 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
             err.backward()
             k += 1
-            if k%self.args.batchsize==0:
+            # params_norm = None
+            # params = None  # prevent GPU-memory leak
+            if k==self.args.batchsize:
                 for f in self.embedding_model.parameters():
                     f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
                 self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
+                k = 0
         self.epoch += 1
         return loss/len(dataset)
 
