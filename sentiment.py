@@ -199,7 +199,7 @@ def main():
     elif mode == "EXPERIMENT":
         max_dev = 0
         max_dev_epoch = 0
-        filename = 'model.pth'
+        filename = args.name+'.pth'
         for epoch in range(args.epochs):
             train_loss             = trainer.train(dev_dataset)
             dev_loss, dev_pred     = trainer.test(dev_dataset)
@@ -239,7 +239,8 @@ def main():
 
 if __name__ == "__main__":
     # log to console and file
-    logger1 = log_util.create_logger("simple_gru", print_console=True)
+    args = parse_args(type=1)
+    logger1 = log_util.create_logger(args.name, print_console=True)
     logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)
