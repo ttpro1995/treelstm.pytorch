@@ -107,10 +107,10 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     # initialize model, criterion/loss_function, optimizer
-    model = TreeGRUSentiment(
-                args.cuda, args.input_dim,
-                args.tag_dim, args.rel_dim,
-        args.mem_dim, args.at_hid_dim ,3, criterion
+    model = TreeLSTMSentiment(
+                args.cuda, vocab.size(),
+                args.input_dim+args.tag_dim, args.mem_dim,
+                args.num_classes, criterion
             )
 
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,

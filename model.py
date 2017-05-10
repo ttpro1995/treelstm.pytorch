@@ -15,32 +15,19 @@ class ChildSumTreeLSTM(nn.Module):
 
         # self.emb = nn.Embedding(vocab_size,in_dim,
         #                         padding_idx=Constants.PAD)
+        # torch.manual_seed(123)
 
         self.ix = nn.Linear(self.in_dim,self.mem_dim)
         self.ih = nn.Linear(self.mem_dim,self.mem_dim)
 
+        self.fh = nn.Linear(self.mem_dim, self.mem_dim)
         self.fx = nn.Linear(self.in_dim,self.mem_dim)
-        self.fh = nn.Linear(self.mem_dim,self.mem_dim)
-
-        self.ox = nn.Linear(self.in_dim,self.mem_dim)
-        self.oh = nn.Linear(self.mem_dim,self.mem_dim)
 
         self.ux = nn.Linear(self.in_dim,self.mem_dim)
         self.uh = nn.Linear(self.mem_dim,self.mem_dim)
 
-
-        if self.cudaFlag:
-            self.ix = self.ix.cuda()
-            self.ih = self.ih.cuda()
-
-            self.fx = self.fx.cuda()
-            self.fh = self.fh.cuda()
-
-            self.ox = self.ox.cuda()
-            self.oh = self.oh.cuda()
-
-            self.ux = self.ux.cuda()
-            self.uh = self.uh.cuda()
+        self.ox = nn.Linear(self.in_dim,self.mem_dim)
+        self.oh = nn.Linear(self.mem_dim,self.mem_dim)
 
         self.criterion = criterion
         self.output_module = None
@@ -101,14 +88,15 @@ class ChildSumTreeLSTM(nn.Module):
         tree.state = self.node_forward(embs[tree.idx-1], child_c, child_h)
 
         if self.output_module != None:
-            output = self.output_module.forward(tree.state[0], training)
+            output = self.output_module.forward(tree.state[1], training)
             tree.output = output
             if training and tree.gold_label != None:
                 target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
                 if self.cudaFlag:
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
-
+        # TODO: meow, del debug
+        # print (tree.idx, loss.data[0])
         return tree.state, loss
 
     def get_child_states(self, tree):
@@ -128,40 +116,6 @@ class ChildSumTreeLSTM(nn.Module):
                 child_c[idx], child_h[idx] = tree.children[idx].state
         return child_c, child_h
 
-# module for distance-angle similarity
-class Similarity(nn.Module):
-    def __init__(self, cuda, mem_dim, hidden_dim, num_classes):
-        super(Similarity, self).__init__()
-        self.cudaFlag = cuda
-        self.mem_dim = mem_dim
-        self.hidden_dim = hidden_dim
-        self.num_classes = num_classes
-        self.wh = nn.Linear(2*self.mem_dim, self.hidden_dim)
-        self.wp = nn.Linear(self.hidden_dim, self.num_classes)
-
-    def forward(self, lvec, rvec):
-        mult_dist = F.torch.mul(lvec, rvec)
-        abs_dist = F.torch.abs(F.torch.add(lvec,-rvec))
-        vec_dist = F.torch.cat((mult_dist, abs_dist),1)
-        out = F.sigmoid(self.wh(vec_dist))
-        # out = F.sigmoid(out)
-        out = F.log_softmax(self.wp(out))
-        return out
-
-# puttinh the whole model together
-class SimilarityTreeLSTM(nn.Module):
-    def __init__(self, cuda, vocab_size, in_dim, mem_dim, hidden_dim, num_classes):
-        super(SimilarityTreeLSTM, self).__init__()
-        self.cudaFlag = cuda
-        self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim)
-        self.similarity = Similarity(cuda, mem_dim, hidden_dim, num_classes)
-
-    def forward(self, ltree, linputs, rtree, rinputs):
-        lstate, lhidden = self.childsumtreelstm(ltree, linputs)
-        rstate, rhidden = self.childsumtreelstm(rtree, rinputs)
-        output = self.similarity(lstate, rstate)
-        return output
-
 
 class SentimentModule(nn.Module):
     def __init__(self, cuda, mem_dim, num_classes, dropout = False):
@@ -170,42 +124,30 @@ class SentimentModule(nn.Module):
         self.mem_dim = mem_dim
         self.num_classes = num_classes
         self.dropout = dropout
+        # torch.manual_seed(456)
         self.l1 = nn.Linear(self.mem_dim, self.num_classes)
+        self.logsoftmax = nn.LogSoftmax()
         if self.cudaFlag:
             self.l1 = self.l1.cuda()
 
 
     def forward(self, vec, training = False):
         if self.dropout:
-            out = F.log_softmax(self.l1(F.dropout(vec, training = training)))
+            out = self.logsoftmax(self.l1(F.dropout(vec, training = training)))
         else:
-            out = F.log_softmax(self.l1(vec))
+            out = self.logsoftmax(self.l1(vec))
         return out
 
 class TreeLSTMSentiment(nn.Module):
-    def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize , in_dim, mem_dim, num_classes, criterion):
+    def __init__(self, cuda, vocab_size, in_dim, mem_dim, num_classes, criterion):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
-        self.tree_module = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
+        self.childsumtreelstm = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
-        self.tree_module.set_output_module(self.output_module)
+        self.childsumtreelstm.set_output_module(self.output_module)
 
-        # word embeddiing
-        self.word_embedding = nn.Embedding(vocab_size,in_dim,
-                                padding_idx=Constants.PAD)
-        # embedding for postag and rel
-        self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
-        self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
-
-    def get_tree_parameters(self):
-        return self.tree_module.getParameters()
-
-    def forward(self, tree, sent_inputs, tag_inputs, rel_inputs, training = False):
-        sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
-        tag_emb = F.torch.unsqueeze(self.tag_emb.forward(tag_inputs), 1)
-        rel_emb = F.torch.unsqueeze(self.rel_emb.forward(rel_inputs), 1)
-        tree_state, loss = self.tree_module(tree, sent_emb, training)
+    def forward(self, tree, inputs, training = False):
+        tree_state, loss = self.childsumtreelstm(tree, inputs, training)
         state, hidden = tree_state
         output = tree.output
         return output, loss
-

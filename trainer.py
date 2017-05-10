@@ -39,7 +39,8 @@ class SentimentTrainer(object):
                 rel_input = rel_input.cuda()
                 target = target.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
+            emb = F.torch.cat([sent_emb, tag_emb], 2)
+            output, err = self.model.forward(tree, emb, training = True)
             #params = self.model.get_tree_parameters()
             #params_norm = params.norm()
             err = err/self.args.batchsize #+ 0.5*self.args.reg*params_norm*params_norm # custom bias
@@ -78,7 +79,8 @@ class SentimentTrainer(object):
                 rel_input = rel_input.cuda()
                 target = target.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            output, _ = self.model(tree, sent_emb, tag_emb, rel_emb) # size(1,5)
+            emb = F.torch.cat([sent_emb, tag_emb], 2)
+            output, _ = self.model(tree, emb) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
             output[:,1] = -9999 # no need middle (neutral) value

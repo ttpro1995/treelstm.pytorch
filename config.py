@@ -30,7 +30,7 @@ def parse_args(type=0):
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analyusis on Dependency Trees')
         parser.add_argument('--data', default='data/sst/',
                             help='path to dataset')
-        parser.add_argument('--glove', default='data/glove/',
+        parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
