@@ -24,7 +24,7 @@ class SentimentTrainer(object):
         self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
-        torch.manual_seed(789)
+        # torch.manual_seed(789)
         indices = torch.randperm(len(dataset))
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             tree, sent, label = dataset[indices[idx]]
