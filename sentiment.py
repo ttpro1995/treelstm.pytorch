@@ -223,9 +223,11 @@ def main():
 
     # model.embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
     embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
-    if args.tag_glove and args.tag_dim > 0:
+    if args.tag_glove:
+        assert args.tag_dim == 50
         embedding_model.tag_emb.state_dict()['weight'].copy_(tag_emb)
-    if args.rel_glove and args.rel_dim > 0:
+    if args.rel_glove:
+        assert args.rel_dim == 50
         embedding_model.rel_emb.state_dict()['weight'].copy_(rel_emb)
 
     # create trainer object for training and testing

@@ -13,3 +13,5 @@ job.py
 \.idea/
 
 *.pth
+
+*.log

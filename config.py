@@ -83,6 +83,7 @@ def parse_args(type=0):
         return args
 
 def print_config(args):
+    print ('name ' + str(args.name))
     print ('batchsize ' + str(args.batchsize))
     print ('epochs ' + str(args.epochs))
     print ('lr ' + str(args.lr))
