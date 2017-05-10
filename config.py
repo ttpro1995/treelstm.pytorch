@@ -34,7 +34,7 @@ def parse_args(type=0):
                             help='directory with GLOVE embeddings')
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
-        parser.add_argument('--epochs', default=200, type=int,
+        parser.add_argument('--epochs', default=2, type=int,
                             help='number of total epochs to run')
         parser.add_argument('--lr', default=0.05, type=float,
                             metavar='LR', help='initial learning rate')
@@ -44,15 +44,24 @@ def parse_args(type=0):
                             help='weight decay (default: 1e-4)')
         parser.add_argument('--reg', default=1e-4, type=float,
                             help='l2 l2 regularization (default: 1e-4)')
-        parser.add_argument('--optim', default='adam',
-                            help='optimizer (default: adam)')
+        parser.add_argument('--optim', default='adagrad',
+                            help='optimizer (default: adagrad)')
         parser.add_argument('--seed', default=123, type=int,
                             help='random seed (default: 123)')
         parser.add_argument('--fine_grain', default=False, type=bool,
                             help='fine grained (default False)')
 
-        parser.add_argument('--at_hid_dim', default=100, type=int,
-                            help='fine grained (default False)')
+        parser.add_argument('--input_dim', default=300, type=int,
+                            help=' embedding dimension (default:30)')
+        parser.add_argument('--mem_dim', default=150, type=int,
+                            help='mem_dim (default:150)')
+        parser.add_argument('--tag_dim', default=20, type=int,
+                            help='tag embedding dimension (default:20)')
+        parser.add_argument('--rel_dim', default=20, type=int,
+                            help='rel embedding dimension (default:20)')
+
+        parser.add_argument('--at_hid_dim', default=0, type=int,
+                            help='hidden dim of attention (0 for disable)')
 
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
         cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')
@@ -61,3 +70,14 @@ def parse_args(type=0):
 
         args = parser.parse_args()
         return args
+
+def print_config(args):
+    print ('batchsize ' + str(args.batchsize))
+    print ('epochs ' + str(args.epochs))
+    print ('lr ' + str(args.lr))
+    print ('emblr ' + str(args.emblr))
+    print ('wd ' + str(args.wd))
+    print ('reg ' + str(args.reg))
+    print ('optim ' + str(args.optim))
+    print ('input_dim ' + str(args.input_dim))
+    print ('mem_dim ' + str(args.mem_dim))

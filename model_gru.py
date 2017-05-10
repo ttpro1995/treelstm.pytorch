@@ -233,12 +233,14 @@ class GRU_AT(nn.Module):
         self.cudaFlag = cuda
         self.in_dim = in_dim
         self.mem_dim = mem_dim
-
-        self.at = AT(cuda, in_dim, at_hid_dim)
+        self.at_hid_dim = at_hid_dim
+        if at_hid_dim > 0:
+            self.at = AT(cuda, in_dim, at_hid_dim)
         self.gru_cell = SimpleGRU(self.cudaFlag, in_dim, mem_dim)
 
         if self.cudaFlag:
-            self.at = self.at.cuda()
+            if at_hid_dim > 0:
+                self.at = self.at.cuda()
             self.gru_cell = self.gru_cell.cuda()
 
     def forward(self, x, h_prev):
@@ -248,10 +250,12 @@ class GRU_AT(nn.Module):
         :param h_prev:
         :return: a * m + (1 - a) * h[t-1]
         """
-        a = self.at.forward(x)
         m = self.gru_cell(x, h_prev)
-        h = torch.mm(a, m) + torch.mm((1-a), h_prev)
-        # h = a*m + (1 - a) * h_prev
+        if self.at_hid_dim > 0:
+            a = self.at.forward(x)
+            h = torch.mm(a, m) + torch.mm((1-a), h_prev)
+        else:
+            h = m + h_prev
         return h
 
 class TreeGRUSentiment(nn.Module):
