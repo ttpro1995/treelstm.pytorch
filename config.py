@@ -86,3 +86,6 @@ def print_config(args):
     print ('optim ' + str(args.optim))
     print ('input_dim ' + str(args.input_dim))
     print ('mem_dim ' + str(args.mem_dim))
+
+    print ('tag_dim ' + str(args.tag_dim))
+    print ('rel_dim ' + str(args.rel_dim))
