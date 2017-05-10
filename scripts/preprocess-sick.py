@@ -33,7 +33,7 @@ def constituency_parse(filepath, cp='', tokenize=True):
         % (cp, tokpath, parentpath, tokenize_flag, filepath))
     os.system(cmd)
 
-def build_vocab(filepaths, dst_path, lowercase=True):
+def build_vocab(filepaths, dst_path, lowercase=False):
     vocab = set()
     for filepath in filepaths:
         with open(filepath) as f:

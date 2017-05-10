@@ -226,7 +226,7 @@ def load_dictionary(dirpath):
             d[s] = labels[int(idx)]
     return d
 
-def build_vocab(filepaths, dst_path, lowercase=True):
+def build_vocab(filepaths, dst_path, lowercase=False):
     vocab = set()
     for filepath in filepaths:
         with open(filepath) as f:
