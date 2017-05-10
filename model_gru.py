@@ -132,9 +132,15 @@ class TreeSimpleGRU(nn.Module):
 
         if tree.num_children > 0:
             child_rels, child_k  = self.get_child_state(tree, rel_emb)
-            tree.state = self.node_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1], child_rels, child_k)
+            if self.tag_dim > 0:
+                tree.state = self.node_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1], child_rels, child_k)
+            else:
+                tree.state = self.node_forward(w_emb[tree.idx - 1], None, child_rels, child_k)
         elif tree.num_children == 0:
-            tree.state = self.leaf_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1])
+            if self.tag_dim > 0:
+                tree.state = self.leaf_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1])
+            else:
+                tree.state = self.leaf_forward(w_emb[tree.idx - 1], None)
 
         if self.output_module != None:
             output = self.output_module.forward(tree.state, training)
@@ -157,7 +163,10 @@ class TreeSimpleGRU(nn.Module):
         h = self.leaf_h
         if self.cudaFlag:
             h = h.cuda()
-        x = F.torch.cat([word_emb, tag_emb], 1)
+        if self.tag_dim > 0:
+            x = F.torch.cat([word_emb, tag_emb], 1)
+        else:
+            x = word_emb
         k = self.gru_cell(x, h)
         return k
 
@@ -177,12 +186,16 @@ class TreeSimpleGRU(nn.Module):
             h = h.cuda()
 
         for i in range(0, n_child):
-            rel = child_rels[i]
             k = child_k[i]
-            x = F.torch.cat([word_emb, tag_emb, rel, k], 1)
+            x_list = [word_emb, k]
+            if self.rel_dim >0:
+                rel = child_rels[i]
+                x_list.append(rel)
+            if self.tag_dim > 0:
+                x_list.append(tag_emb)
+            x = F.torch.cat(x_list, 1)
             h = self.gru_at(x, h)
         k = h
-
         return k
 
     def get_child_state(self, tree, rels_emb):
@@ -196,13 +209,18 @@ class TreeSimpleGRU(nn.Module):
             assert False #  never get here
         else:
             child_k = Var(torch.Tensor(tree.num_children, 1, self.mem_dim))
-            child_rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
+            if self.rel_dim>0:
+                child_rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
+            else:
+                child_rels = None
             if self.cudaFlag:
                 child_k = child_k.cuda()
-                child_rels = child_rels.cuda()
+                if self.rel_dim > 0:
+                    child_rels = child_rels.cuda()
             for idx in xrange(tree.num_children):
                 child_k[idx] = tree.children[idx].state
-                child_rels[idx] = rels_emb[tree.children[idx].idx - 1]
+                if self.rel_dim > 0:
+                    child_rels[idx] = rels_emb[tree.children[idx].idx - 1]
         return child_rels, child_k
 
 class AT(nn.Module):

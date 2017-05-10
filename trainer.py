@@ -49,10 +49,18 @@ class SentimentTrainer(object):
             #params = None
             #params_norm = None
             if k==self.args.batchsize:
-                for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
-                    f.data.sub_(f.grad.data * self.args.emblr)
-                for f in self.embedding_model.rel_emb.parameters():
-                    f.data.sub_(f.grad.data * self.args.emblr)
+                if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
+                    for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
+                        f.data.sub_(f.grad.data * self.args.tag_emblr)
+
+                if self.args.rel_emblr > 0 and self.args.rel_dim > 0:
+                    for f in self.embedding_model.rel_emb.parameters():
+                        f.data.sub_(f.grad.data * self.args.rel_emblr)
+
+                if self.args.emblr > 0:
+                    for f in self.embedding_model.word_embedding.parameters():
+                        f.data.sub_(f.grad.data * self.args.emblr)
+
                 self.optimizer.step()
                 self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
