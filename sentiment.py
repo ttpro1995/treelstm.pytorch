@@ -121,12 +121,21 @@ def main():
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':
-        optimizer   = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
+        optimizer   = optim.Adam([
+                {'params': model.parameters(), 'lr': args.lr, 'weight_decay' : args.wd},
+               # {'params': embedding_model.parameters(), 'lr': args.emblr}
+            ])
     elif args.optim=='adagrad':
         optimizer = optim.Adagrad([
                 {'params': model.parameters(), 'lr': args.lr, 'weight_decay' : args.wd},
                # {'params': embedding_model.parameters(), 'lr': args.emblr}
             ])
+
+    print ('optim '+ args.optim)
+    print ('learning rate '+ str(args.lr))
+    print ('embedding learning rate '+ str(args.emblr))
+    print ('weight decay' + str(args.wd))
+
     metrics = Metrics(args.num_classes)
 
     utils.count_param(model)
@@ -204,7 +213,7 @@ def main():
 
 if __name__ == "__main__":
     # log to console and file
-    logger1 = log_util.create_logger("temp_file", print_console=True)
+    logger1 = log_util.create_logger("simple_gru", print_console=True)
     logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)

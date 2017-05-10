@@ -25,12 +25,64 @@ from embedding_model import EmbeddingModel
 #         pass
 
 
+class SimpleGRU(nn.Module):
+    """
+    w[i] : (300, 1)
+    h[i] : (150, 1)
+    p[i] : (20, 1)
+    r[i] : (20, 1)
+    k[i] : (150, 1)
+    x[i] : (20 + 150 + 300 + 20 = 490, 1) (490, 1)
+    Uz, Ur, Uh : (150, 150) => 67500 => (450, 450)
+    Wz, Wr, Wh : (150, 20 + 150 + 300 + 20) (150, 490)
+    """
+    def __init__(self, cuda, in_dim, hid_dim):
+        super(SimpleGRU, self).__init__()
+        self.cudaFlag = cuda
+
+        self.Uz = nn.Linear(hid_dim, hid_dim)
+        self.Ur = nn.Linear(hid_dim, hid_dim)
+        self.Uh = nn.Linear(hid_dim, hid_dim)
+
+        self.Wz = nn.Linear(in_dim, hid_dim)
+        self.Wr = nn.Linear(in_dim, hid_dim)
+        self.Wh = nn.Linear(in_dim, hid_dim)
+
+        if self.cudaFlag:
+            self.Uz = self.Uz.cuda()
+            self.Ur = self.Uz.cuda()
+            self.Uh = self.Uz.cuda()
+
+            self.Wz = self.Wz.cuda()
+            self.Wr = self.Wr.cuda()
+            self.Wh = self.Wh.cuda()
+
+    def forward(self, x, h_prev):
+        """
+    Simple-GRU(compress_x[v], h[t-1]) :
+    z[t]         := s(Wz *compress_x[t]+ Uz * h[t-1] + bz)
+    r[t]         := s(Wr * compress_x[t] + Ur * h[t-1] + br)
+    h_temp[t]     := g(Wh * compress_x[t] + Uh * h[t-1] + bh)
+    h[t]         := r[t] .* h[t-1] + (1 - z[t]) .* h_temp[t]
+    return h[t]
+        :param x: compress_x[t]
+        :param h_prev: h[t-1]
+        :return:
+        """
+        z = F.sigmoid(self.Wz(x) + self.Uz(h_prev))
+        r = F.sigmoid(self.Wr(x) + self.Ur(h_prev))
+        h_temp = F.tanh(self.Wh(x) + self.Uh(h_prev))
+        h = r*h_prev + (1-z)*h_temp
+        return h
+
+
 
 class TreeSimpleGRU(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion, leaf_h = None):
         super(TreeSimpleGRU, self).__init__()
         self.cudaFlag = cuda
-        self.gru_cell = nn.GRUCell(word_dim + tag_dim, mem_dim)
+        # self.gru_cell = nn.GRUCell(word_dim + tag_dim, mem_dim)
+        self.gru_cell = SimpleGRU(self.cudaFlag, word_dim+tag_dim, mem_dim)
         self.gru_at = GRU_AT(self.cudaFlag, word_dim + tag_dim + rel_dim + mem_dim, at_hid_dim ,mem_dim)
         self.mem_dim = mem_dim
         self.in_dim = word_dim
@@ -42,7 +94,6 @@ class TreeSimpleGRU(nn.Module):
             torch.save(self.leaf_h, 'leaf_h.pth')
 
         if self.cudaFlag:
-            self.gru_cell = self.gru_cell.cuda()
             self.leaf_h = self.leaf_h.cuda()
 
         self.criterion = criterion
@@ -184,7 +235,7 @@ class GRU_AT(nn.Module):
         self.mem_dim = mem_dim
 
         self.at = AT(cuda, in_dim, at_hid_dim)
-        self.gru_cell = nn.GRUCell(in_dim, mem_dim)
+        self.gru_cell = SimpleGRU(self.cudaFlag, in_dim, mem_dim)
 
         if self.cudaFlag:
             self.at = self.at.cuda()
@@ -210,16 +261,6 @@ class TreeGRUSentiment(nn.Module):
         self.tree_module = TreeSimpleGRU(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
         self.tree_module.set_output_module(self.output_module)
-
-        # word embeddiing
-        # self.word_embedding = nn.Embedding(vocab_size,in_dim,
-        #                         padding_idx=Constants.PAD)
-        # # embedding for postag and rel
-        # self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
-        # self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
-
-        # self.embedding_model = EmbeddingModel(vocab_size, tag_vocabsize, rel_vocabsize, in_dim)
-
 
     def get_tree_parameters(self):
         return self.tree_module.getParameters()
