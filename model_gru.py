@@ -273,7 +273,7 @@ class GRU_AT(nn.Module):
             a = self.at.forward(x)
             h = torch.mm(a, m) + torch.mm((1-a), h_prev)
         else:
-            h = m + h_prev
+            h = m
         return h
 
 class TreeGRUSentiment(nn.Module):

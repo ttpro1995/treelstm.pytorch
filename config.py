@@ -32,6 +32,11 @@ def parse_args(type=0):
                             help='path to dataset')
         parser.add_argument('--glove', default='data/glove/',
                             help='directory with GLOVE embeddings')
+        parser.add_argument('--tag_glove', default=False, type=bool,
+                            help='use tag embedding pretrained by glove')
+        parser.add_argument('--rel_glove', default=False, type=bool,
+                            help='use rel embedding pretrained by glove')
+
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
         parser.add_argument('--epochs', default=10, type=int,
@@ -93,3 +98,6 @@ def print_config(args):
     print ('tag_dim ' + str(args.tag_dim))
     print ('rel_dim ' + str(args.rel_dim))
     print ('at_hid_dim ' + str(args.at_hid_dim))
+
+    print ('tag_glove ' + str(args.tag_glove))
+    print ('rel_glove ' + str(args.rel_glove))

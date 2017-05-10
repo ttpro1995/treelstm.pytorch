@@ -166,6 +166,49 @@ def main():
         is_preprocessing_data = True # flag to quit
         print('done creating emb, quit')
 
+    tag_emb_file = os.path.join(args.data, 'tag_embed.pth')
+    if os.path.isfile(tag_emb_file):
+        tag_emb = torch.load(tag_emb_file)
+    else:
+        # load glove embeddings and vocab
+        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove, 'tagglove'))
+        print('==> TAG GLOVE vocabulary size: %d ' % glove_vocab.size())
+        tag_emb = torch.zeros(tagvocab.size(), glove_emb.size(1))
+        # zero out the embeddings for padding and other special words if they are absent in vocab
+        # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
+        #     emb[idx].zero_()
+        # torch.manual_seed(555)
+        for word in tagvocab.labelToIdx.keys():
+            if glove_vocab.getIndex(word):
+                tag_emb[tagvocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
+            else:
+                tag_emb[tagvocab.getIndex(word)] = torch.Tensor(tag_emb[tagvocab.getIndex(word)].size()).normal_(-0.05, 0.05)
+        torch.save(tag_emb, tag_emb_file)
+        is_preprocessing_data = True  # flag to quit
+        print('done creating emb, quit')
+
+    rel_emb_file = os.path.join(args.data, 'rel_embed.pth')
+    if os.path.isfile(rel_emb_file):
+        rel_emb = torch.load(rel_emb_file)
+    else:
+        # load glove embeddings and vocab
+        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove, 'relglove'))
+        print('==> REL GLOVE vocabulary size: %d ' % glove_vocab.size())
+        rel_emb = torch.zeros(relvocab.size(), glove_emb.size(1))
+        # zero out the embeddings for padding and other special words if they are absent in vocab
+        # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
+        #     emb[idx].zero_()
+        # torch.manual_seed(555)
+        for word in relvocab.labelToIdx.keys():
+            if glove_vocab.getIndex(word):
+                rel_emb[relvocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
+            else:
+                rel_emb[relvocab.getIndex(word)] = torch.Tensor(rel_emb[relvocab.getIndex(word)].size()).normal_(-0.05,
+                                                                                                              0.05)
+        torch.save(rel_emb, rel_emb_file)
+        is_preprocessing_data = True  # flag to quit
+        print('done creating emb, quit')
+
     if is_preprocessing_data:
         print ('quit program due to memory leak during preprocess data, please rerun sentiment.py')
         quit()
@@ -180,6 +223,10 @@ def main():
 
     # model.embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
     embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
+    if args.tag_glove and args.tag_dim > 0:
+        embedding_model.tag_emb.state_dict()['weight'].copy_(tag_emb)
+    if args.rel_glove and args.rel_dim > 0:
+        embedding_model.rel_emb.state_dict()['weight'].copy_(rel_emb)
 
     # create trainer object for training and testing
     trainer     = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
