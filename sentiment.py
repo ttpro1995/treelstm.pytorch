@@ -201,7 +201,7 @@ def main():
         max_dev_epoch = 0
         filename = args.name+'.pth'
         for epoch in range(args.epochs):
-            train_loss             = trainer.train(dev_dataset)
+            train_loss             = trainer.train(train_dataset)
             dev_loss, dev_pred     = trainer.test(dev_dataset)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             print('==> Train loss   : %f \t' % train_loss, end="")
