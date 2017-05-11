@@ -7,24 +7,6 @@ import Constants
 from model import SentimentModule
 from embedding_model import EmbeddingModel
 
-# class GRU(nn.Module):
-#     def __init__(self, cuda,in_dim, mem_dim, num_class):
-#         super(GRU, self).__init__()
-#         self.cudaFlag = cuda
-#
-#         self.Wz = nn.Linear(in_dim, mem_dim)
-#         self.Uz = nn.Linear(mem_dim, mem_dim)
-#
-#         self.Wr = nn.Linear(in_dim, mem_dim)
-#         self.Ur = nn.Linear(mem_dim, mem_dim)
-#
-#         self.Wh = nn.Linear(in_dim, mem_dim)
-#         self.Uh = nn.Linear(mem_dim, mem_dim)
-#
-#     def forward(self, x, h, r):
-#         pass
-
-
 class SimpleGRU(nn.Module):
     """
     w[i] : (300, 1)
