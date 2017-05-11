@@ -43,6 +43,38 @@ class CompositionLSTM(nn.Module):
         self.i_k = nn.Linear(mem_dim, mem_dim)
         self.i_h = nn.Linear(mem_dim, mem_dim)
 
+        if self.cudaFlag:
+            self.fdown_word = self.fdown_word.cuda()
+            self.fdown_tag = self.fdown_tag.cuda()
+            self.fdown_rel = self.fdown_rel.cuda()
+            self.fdown_k = self.fdown_k.cuda()
+            self.fdown_h = self.fdown_h.cuda()
+
+            self.fleft_word = self.fleft_word.cuda()
+            self.fleft_tag = self.fleft_tag.cuda()
+            self.fleft_rel = self.fleft_rel.cuda()
+            self.fleft_k = self.fleft_k.cuda()
+            self.fleft_h = self.fleft_h.cuda()
+
+            self.o_word = self.o_word.cuda()
+            self.o_tag = self.o_tag.cuda()
+            self.o_rel = self.o_rel.cuda()
+            self.o_k = self.o_k.cuda()
+            self.o_h = self.o_h.cuda()
+
+            self.u_word = self.u_word.cuda()
+            self.u_tag = self.u_tag.cuda()
+            self.u_rel = self.u_rel.cuda()
+            self.u_k = self.u_k.cuda()
+            self.u_h = self.u_h.cuda()
+
+            self.i_word = self.i_word.cuda()
+            self.i_tag = self.i_tag.cuda()
+            self.i_rel = self.i_rel.cuda()
+            self.i_k = self.i_k.cuda()
+            self.i_h = self.i_h.cuda()
+
+
     def forward(self, word, tag, rel, k, q, h_prev, c_prev, training = False):
 
         i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_rel(rel) \
@@ -64,7 +96,7 @@ class CompositionLSTM(nn.Module):
 
         h = o * F.tanh(c)
 
-        return h, c # todo: fix k [150]
+        return h, c
 
 class TreeCompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion):
@@ -173,42 +205,31 @@ class TreeCompositionLSTM(nn.Module):
                 words = words.cuda()
                 k = k.cuda()
                 q = q.cuda()
-                if self.tag_dim:
-                    tags = tags.cuda()
-                if self.rel_dim:
-                    rels = rels.cuda()
+                tags = tags.cuda()
+                rels = rels.cuda()
 
         else:
             words = Var(torch.Tensor(tree.num_children, 1, self.in_dim))
             k = Var(torch.zeros(tree.num_children, 1, self.mem_dim))
             q = Var(torch.zeros(tree.num_children, 1, self.mem_dim))
-            if self.rel_dim>0:
-                rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
-            else:
-                rels = None
-            if self.tag_dim>0:
-                tags = Var(torch.Tensor(tree.num_children, 1, self.tag_dim))
-            else:
-                tags = None
+            rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
+            tags = Var(torch.Tensor(tree.num_children, 1, self.tag_dim))
+
 
             if self.cudaFlag:
                 words = words.cuda()
                 k = k.cuda()
                 q = q.cuda()
-                if self.rel_dim>0:
-                    rels = rels.cuda()
-                if self.tag_dim>0:
-                    tags = tags.cuda()
+                rels = rels.cuda()
+                tags = tags.cuda()
 
 
             for idx in xrange(tree.num_children):
                 words[idx] = word_emb[tree.children[idx].idx - 1]
                 k[idx] = tree.children[idx].state[0]
                 q[idx] = tree.children[idx].state[1]
-                if self.rel_dim > 0:
-                    rels[idx] = rel_emb[tree.children[idx].idx - 1]
-                if self.tag_dim > 0:
-                    tags[idx] = tag_emb[tree.children[idx].idx - 1]
+                rels[idx] = rel_emb[tree.children[idx].idx - 1]
+                tags[idx] = tag_emb[tree.children[idx].idx - 1]
         return words, tags, rels, k, q
 
 
@@ -226,7 +247,6 @@ class TreeCompositionLSTMSentiment(nn.Module):
         return self.tree_module.getParameters()
 
     def forward(self, tree, sent_emb, tag_emb, rel_emb, training = False):
-
         tree_state, loss = self.tree_module(tree, sent_emb, tag_emb, rel_emb, training)
         output = tree.output
         return output, loss
