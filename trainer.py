@@ -3,6 +3,7 @@ import torch
 from torch.autograd import Variable as Var
 from utils import map_label_to_target, map_label_to_target_sentiment
 import torch.nn.functional as F
+import gc
 
 class SentimentTrainer(object):
     """
@@ -32,12 +33,10 @@ class SentimentTrainer(object):
             input = Var(sent)
             tag_input = Var(tag)
             rel_input = Var(rel)
-            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain))
             if self.args.cuda:
                 input = input.cuda()
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
-                target = target.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
             output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
             #params = self.model.get_tree_parameters()
@@ -66,6 +65,7 @@ class SentimentTrainer(object):
                 self.optimizer.zero_grad()
                 k = 0
         self.epoch += 1
+        gc.collect()
         return loss/len(dataset)
 
     # helper function for testing
