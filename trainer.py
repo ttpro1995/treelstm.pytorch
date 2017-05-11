@@ -25,10 +25,13 @@ class SentimentTrainer(object):
         self.embedding_model.train()
         self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
+        print ('Start training epoch ' + str(self.epoch))
 
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
-        for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
+        total_sample = len(dataset)
+        done_sample = 0
+        for idx in xrange(len(dataset)):
             tree, sent, tag, rel, label = dataset[indices[idx]]
             input = Var(sent)
             tag_input = Var(tag)
@@ -47,6 +50,9 @@ class SentimentTrainer(object):
             k += 1
             #params = None
             #params_norm = None
+            done_sample += 1
+            if done_sample % 1000 == 0:
+                print ('epoch '+ str(self.epoch) + ' '+ str(done_sample) + '/'+str(total_sample))
             if k==self.args.batchsize:
                 if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
                     for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
