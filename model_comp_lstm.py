@@ -144,13 +144,10 @@ class TreeCompositionLSTM(nn.Module):
             _, child_loss = self.forward(tree.children[idx], w_emb, tag_emb, rel_emb, training)
             loss = loss + child_loss
 
-        k, q  = self.get_child_state(tree, w_emb, tag_emb, rel_emb)
-        tree.state = self.node_forward(tree, w_emb, tag_emb, rel_emb, k, q, training)
-
-
+        # k, q  = self.get_child_state(tree, w_emb, tag_emb, rel_emb)
+        tree.state = self.node_forward(tree, w_emb, tag_emb, rel_emb, training)
 
         if self.output_module != None:
-            k = tree.state[0]
             output = self.output_module.forward(tree.state[0], training)
             tree.output = output
             if training and tree.gold_label != None:
@@ -160,9 +157,7 @@ class TreeCompositionLSTM(nn.Module):
                 loss = loss + self.criterion(output, target)
         return tree.state, loss
 
-
-
-    def node_forward(self, tree, word_emb, tag_emb, rel_emb, child_k, child_q, training = False):
+    def node_forward(self, tree, word_emb, tag_emb, rel_emb, training = False):
         """
         words, tags, rels are embedding of child node
         """
@@ -174,83 +169,66 @@ class TreeCompositionLSTM(nn.Module):
         h, c = h_zero, c_zero
 
         if tree.num_children == 0:
-            words = Var(torch.zeros(1, self.in_dim))
-            if self.tag_dim:
-                tags = Var(torch.zeros(1, self.tag_dim))
-            if self.rel_dim:
-                rels = Var(torch.zeros(1, self.rel_dim))
-
-            if self.cudaFlag:
-                words = words.cuda()
-                tags = tags.cuda()
-                rels = rels.cuda()
-
-            h, c = self.composition_lstm.forward(
-                words , tags, rels,
-                child_k[0], child_q[0], h, c, training
-            )
+            return h, c
         else:
-            n_child = child_k.size(0)
 
-            for t in xrange(0, n_child):
+            for child in tree.children:
                 h, c = self.composition_lstm.forward(
-                    word_emb[tree.children[t].idx - 1], tag_emb[tree.children[t].idx - 1], rel_emb[tree.children[t].idx - 1], child_k[t], child_q[t], h, c, training
+                    word_emb[child.idx - 1], tag_emb[child.idx - 1], rel_emb[child.idx - 1], child.state[0], child.state[1], h, c, training
                 )
 
         k = h
         q = c
         return k, q
 
-    def get_child_state(self, tree, word_emb, tag_emb, rel_emb):
-        """
-        Get children word, tag, rel
-        :param tree: tree we need to get child
-        :param rels_emb (tensor):
-        :return:
-        """
-        if tree.num_children == 0:
-            # words = Var(torch.zeros(1, 1, self.in_dim))
-            # if self.tag_dim:
-            #     tags = Var(torch.zeros(1, 1, self.tag_dim))
-            # if self.rel_dim:
-            #     rels = Var(torch.zeros(1, 1, self.rel_dim))
-            k = Var(torch.zeros(1, 1, self.mem_dim))
-            q = Var(torch.zeros(1, 1, self.mem_dim))
-
-            if self.cudaFlag:
-                # words = words.cuda()
-                # tags = tags.cuda()
-                # rels = rels.cuda()
-                k = k.cuda()
-                q = q.cuda()
-
-
-        else:
-            # words = Var(torch.Tensor(tree.num_children, 1, self.in_dim))
-            # rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
-            # tags = Var(torch.Tensor(tree.num_children, 1, self.tag_dim))
-
-            k = Var(torch.zeros(tree.num_children, 1, self.mem_dim))
-            q = Var(torch.zeros(tree.num_children, 1, self.mem_dim))
-
-
-            if self.cudaFlag:
-                # words = words.cuda()
-                # rels = rels.cuda()
-                # tags = tags.cuda()
-                k = k.cuda()
-                q = q.cuda()
-
-
-            for idx in xrange(tree.num_children):
-                # words[idx] = word_emb[tree.children[idx].idx - 1]
-                # rels[idx] = rel_emb[tree.children[idx].idx - 1]
-                # tags[idx] = tag_emb[tree.children[idx].idx - 1]
-
-                k[idx] = tree.children[idx].state[0]
-                q[idx] = tree.children[idx].state[1]
-        # return words, tags, rels, k, q
-        return k, q
+    # def get_child_state(self, tree, word_emb, tag_emb, rel_emb):
+    #     """
+    #     Get children word, tag, rel
+    #     :param tree: tree we need to get child
+    #     :param rels_emb (tensor):
+    #     :return:
+    #     """
+    #     if tree.num_children == 0:
+    #         # words = Var(torch.zeros(1, 1, self.in_dim))
+    #         # if self.tag_dim:
+    #         #     tags = Var(torch.zeros(1, 1, self.tag_dim))
+    #         # if self.rel_dim:
+    #         #     rels = Var(torch.zeros(1, 1, self.rel_dim))
+    #         k = Var(torch.zeros(1, 1, self.mem_dim))
+    #         q = Var(torch.zeros(1, 1, self.mem_dim))
+    #
+    #         if self.cudaFlag:
+    #             # words = words.cuda()
+    #             # tags = tags.cuda()
+    #             # rels = rels.cuda()
+    #             k = k.cuda()
+    #             q = q.cuda()
+    #
+    #
+    #     else:
+    #         # words = Var(torch.Tensor(tree.num_children, 1, self.in_dim))
+    #         # rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
+    #         # tags = Var(torch.Tensor(tree.num_children, 1, self.tag_dim))
+    #
+    #
+    #
+    #         if self.cudaFlag:
+    #             # words = words.cuda()
+    #             # rels = rels.cuda()
+    #             # tags = tags.cuda()
+    #             k = k.cuda()
+    #             q = q.cuda()
+    #
+    #
+    #         for idx in xrange(tree.num_children):
+    #             # words[idx] = word_emb[tree.children[idx].idx - 1]
+    #             # rels[idx] = rel_emb[tree.children[idx].idx - 1]
+    #             # tags[idx] = tag_emb[tree.children[idx].idx - 1]
+    #
+    #             k[idx] = tree.children[idx].state[0]
+    #             q[idx] = tree.children[idx].state[1]
+    #     # return words, tags, rels, k, q
+    #     return k, q
 
 
 
