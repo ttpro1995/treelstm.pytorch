@@ -72,6 +72,7 @@ class SentimentTrainer(object):
                 k = 0
         self.epoch += 1
         gc.collect()
+        print ('Done training epoch ' + str(self.epoch))
         return loss/len(dataset)
 
     # helper function for testing
