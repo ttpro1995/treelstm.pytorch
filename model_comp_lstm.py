@@ -56,7 +56,7 @@ class Parent_LSTM(nn.Module):
 
         if self.cudaFlag:
             h_prev = h_prev.cuda()
-            h_prev = h_prev.cuda()
+            c_prev = c_prev.cuda()
 
         i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_h(h_prev))
         f = F.sigmoid(self.f_word(word) + self.f_tag(tag) + self.f_h(h_prev))
