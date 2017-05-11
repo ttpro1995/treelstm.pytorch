@@ -12,40 +12,50 @@ class Parent_LSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, mem_dim):
         super(Parent_LSTM, self).__init__()
         self.cudaFlag = cuda
-
+        self.word_dim = word_dim
+        self.tag_dim = tag_dim
+        self.mem_dim = mem_dim
         self.mem_dim = mem_dim
 
         self.i_word = nn.Linear(word_dim, mem_dim)
-        self.i_tag = nn.Linear(tag_dim, mem_dim)
+        if self.tag_dim:
+            self.i_tag = nn.Linear(tag_dim, mem_dim)
         self.i_h = nn.Linear(mem_dim, mem_dim)
 
         self.o_word = nn.Linear(word_dim, mem_dim)
-        self.o_tag = nn.Linear(tag_dim, mem_dim)
+        if self.tag_dim:
+            self.o_tag = nn.Linear(tag_dim, mem_dim)
         self.o_h = nn.Linear(mem_dim, mem_dim)
 
         self.f_word = nn.Linear(word_dim, mem_dim)
-        self.f_tag = nn.Linear(tag_dim, mem_dim)
+        if self.tag_dim:
+            self.f_tag = nn.Linear(tag_dim, mem_dim)
         self.f_h = nn.Linear(mem_dim, mem_dim)
 
         self.u_word = nn.Linear(word_dim, mem_dim)
-        self.u_tag = nn.Linear(tag_dim, mem_dim)
+        if self.tag_dim:
+            self.u_tag = nn.Linear(tag_dim, mem_dim)
         self.u_h = nn.Linear(mem_dim, mem_dim)
 
         if self.cudaFlag:
             self.f_word = self.f_word.cuda()
-            self.f_tag = self.f_tag.cuda()
+            if self.tag_dim:
+                self.f_tag = self.f_tag.cuda()
             self.f_h = self.f_h.cuda()
 
             self.o_word = self.o_word.cuda()
-            self.o_tag = self.o_tag.cuda()
+            if self.tag_dim:
+                self.o_tag = self.o_tag.cuda()
             self.o_h = self.o_h.cuda()
 
             self.u_word = self.u_word.cuda()
-            self.u_tag = self.u_tag.cuda()
+            if self.tag_dim:
+                self.u_tag = self.u_tag.cuda()
             self.u_h = self.u_h.cuda()
 
             self.i_word = self.i_word.cuda()
-            self.i_tag = self.i_tag.cuda()
+            if self.tag_dim:
+                self.i_tag = self.i_tag.cuda()
             self.i_h = self.i_h.cuda()
 
     def forward(self, word, tag, training=False, h_prev=None, c_prev=None):
@@ -57,12 +67,18 @@ class Parent_LSTM(nn.Module):
         if self.cudaFlag:
             h_prev = h_prev.cuda()
             c_prev = c_prev.cuda()
+        if self.tag_dim:
+            i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_h(h_prev))
+            f = F.sigmoid(self.f_word(word) + self.f_tag(tag) + self.f_h(h_prev))
+            o = F.sigmoid(self.o_word(word) + self.o_tag(tag) + self.o_h(h_prev))
+            u = F.tanh(self.u_word(word) + self.u_tag(tag) + self.u_h(h_prev))
+        else:
+            i = F.sigmoid(self.i_word(word)  + self.i_h(h_prev))
+            f = F.sigmoid(self.f_word(word)  + self.f_h(h_prev))
+            o = F.sigmoid(self.o_word(word)  + self.o_h(h_prev))
+            u = F.tanh(self.u_word(word) + self.u_h(h_prev))
 
-        i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_h(h_prev))
-        f = F.sigmoid(self.f_word(word) + self.f_tag(tag) + self.f_h(h_prev))
-        o = F.sigmoid(self.o_word(word) + self.o_tag(tag) + self.o_h(h_prev))
 
-        u = F.tanh(self.u_word(word) + self.u_tag(tag) + self.u_h(h_prev))
 
         c = i * u + f * c_prev
         h = o * F.tanh(c)
@@ -73,83 +89,160 @@ class CompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim):
         super(CompositionLSTM, self).__init__()
         self.cudaFlag = cuda
+        self.word_dim = word_dim
+        self.tag_dim = tag_dim
+        self.rel_dim = rel_dim
+        self.mem_dim = mem_dim
 
         self.fdown_word = nn.Linear(word_dim, mem_dim)
-        self.fdown_tag = nn.Linear(tag_dim, mem_dim)
-        self.fdown_rel = nn.Linear(rel_dim, mem_dim)
+        if self.tag_dim:
+            self.fdown_tag = nn.Linear(tag_dim, mem_dim)
+        if self.rel_dim:
+            self.fdown_rel = nn.Linear(rel_dim, mem_dim)
         self.fdown_k = nn.Linear(mem_dim, mem_dim)
         self.fdown_h = nn.Linear(mem_dim, mem_dim)
 
         self.fleft_word = nn.Linear(word_dim, mem_dim)
-        self.fleft_tag = nn.Linear(tag_dim, mem_dim)
-        self.fleft_rel = nn.Linear(rel_dim, mem_dim)
+        if self.tag_dim:
+            self.fleft_tag = nn.Linear(tag_dim, mem_dim)
+        if self.rel_dim:
+            self.fleft_rel = nn.Linear(rel_dim, mem_dim)
         self.fleft_k = nn.Linear(mem_dim, mem_dim)
         self.fleft_h = nn.Linear(mem_dim, mem_dim)
 
         self.o_word = nn.Linear(word_dim, mem_dim)
-        self.o_tag = nn.Linear(tag_dim, mem_dim)
-        self.o_rel = nn.Linear(rel_dim, mem_dim)
+        if self.tag_dim:
+            self.o_tag = nn.Linear(tag_dim, mem_dim)
+        if self.rel_dim:
+            self.o_rel = nn.Linear(rel_dim, mem_dim)
         self.o_k = nn.Linear(mem_dim, mem_dim)
         self.o_h = nn.Linear(mem_dim, mem_dim)
 
         self.u_word = nn.Linear(word_dim, mem_dim)
-        self.u_tag = nn.Linear(tag_dim, mem_dim)
-        self.u_rel = nn.Linear(rel_dim, mem_dim)
+        if self.tag_dim:
+            self.u_tag = nn.Linear(tag_dim, mem_dim)
+        if self.rel_dim:
+            self.u_rel = nn.Linear(rel_dim, mem_dim)
         self.u_k = nn.Linear(mem_dim, mem_dim)
         self.u_h = nn.Linear(mem_dim, mem_dim)
 
         self.i_word = nn.Linear(word_dim, mem_dim)
-        self.i_tag = nn.Linear(tag_dim, mem_dim)
-        self.i_rel = nn.Linear(rel_dim, mem_dim)
+        if self.tag_dim:
+            self.i_tag = nn.Linear(tag_dim, mem_dim)
+        if self.rel_dim:
+            self.i_rel = nn.Linear(rel_dim, mem_dim)
         self.i_k = nn.Linear(mem_dim, mem_dim)
         self.i_h = nn.Linear(mem_dim, mem_dim)
 
         if self.cudaFlag:
             self.fdown_word = self.fdown_word.cuda()
-            self.fdown_tag = self.fdown_tag.cuda()
-            self.fdown_rel = self.fdown_rel.cuda()
+            if self.tag_dim:
+                self.fdown_tag = self.fdown_tag.cuda()
+            if self.rel_dim:
+                self.fdown_rel = self.fdown_rel.cuda()
             self.fdown_k = self.fdown_k.cuda()
             self.fdown_h = self.fdown_h.cuda()
 
             self.fleft_word = self.fleft_word.cuda()
-            self.fleft_tag = self.fleft_tag.cuda()
-            self.fleft_rel = self.fleft_rel.cuda()
+            if self.tag_dim:
+                self.fleft_tag = self.fleft_tag.cuda()
+            if self.rel_dim:
+                self.fleft_rel = self.fleft_rel.cuda()
             self.fleft_k = self.fleft_k.cuda()
             self.fleft_h = self.fleft_h.cuda()
 
             self.o_word = self.o_word.cuda()
-            self.o_tag = self.o_tag.cuda()
-            self.o_rel = self.o_rel.cuda()
+            if self.tag_dim:
+                self.o_tag = self.o_tag.cuda()
+            if self.rel_dim:
+                self.o_rel = self.o_rel.cuda()
             self.o_k = self.o_k.cuda()
             self.o_h = self.o_h.cuda()
 
             self.u_word = self.u_word.cuda()
-            self.u_tag = self.u_tag.cuda()
-            self.u_rel = self.u_rel.cuda()
+            if self.tag_dim:
+                self.u_tag = self.u_tag.cuda()
+            if self.rel_dim:
+                self.u_rel = self.u_rel.cuda()
             self.u_k = self.u_k.cuda()
             self.u_h = self.u_h.cuda()
 
             self.i_word = self.i_word.cuda()
-            self.i_tag = self.i_tag.cuda()
-            self.i_rel = self.i_rel.cuda()
+            if self.tag_dim:
+                self.i_tag = self.i_tag.cuda()
+            if self.rel_dim:
+                self.i_rel = self.i_rel.cuda()
             self.i_k = self.i_k.cuda()
             self.i_h = self.i_h.cuda()
 
     def forward(self, word, tag, rel, k, q, h_prev, c_prev, training=False):
-        i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_rel(rel) \
-                      + self.i_h(h_prev) + self.i_k(k))
 
-        f_down = F.sigmoid(self.fdown_word(word) + self.fdown_tag(tag) + self.fdown_rel(rel) \
-                           + self.fdown_h(h_prev) + self.fdown_k(k))
+        if self.tag_dim and self.rel_dim:
+            i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_rel(rel) \
+                          + self.i_h(h_prev) + self.i_k(k))
 
-        f_left = F.sigmoid(self.fleft_word(word) + self.fleft_tag(tag) + self.fleft_rel(rel) \
-                           + self.fleft_h(h_prev) + self.fleft_k(k))
+            f_down = F.sigmoid(self.fdown_word(word) + self.fdown_tag(tag) + self.fdown_rel(rel) \
+                               + self.fdown_h(h_prev) + self.fdown_k(k))
 
-        o = F.sigmoid(self.o_word(word) + self.o_tag(tag) + self.o_rel(rel) \
-                      + self.o_h(h_prev) + self.o_k(k))
+            f_left = F.sigmoid(self.fleft_word(word) + self.fleft_tag(tag) + self.fleft_rel(rel) \
+                               + self.fleft_h(h_prev) + self.fleft_k(k))
 
-        u = F.tanh(self.u_word(word) + self.u_tag(tag) + self.u_rel(rel) \
-                   + self.u_h(h_prev) + self.u_k(k))
+            o = F.sigmoid(self.o_word(word) + self.o_tag(tag) + self.o_rel(rel) \
+                          + self.o_h(h_prev) + self.o_k(k))
+
+            u = F.tanh(self.u_word(word) + self.u_tag(tag) + self.u_rel(rel) \
+                       + self.u_h(h_prev) + self.u_k(k))
+
+        elif self.tag_dim and not self.rel_dim:
+            i = F.sigmoid(self.i_word(word) + self.i_tag(tag) \
+                          + self.i_h(h_prev) + self.i_k(k))
+
+            f_down = F.sigmoid(self.fdown_word(word) + self.fdown_tag(tag) \
+                               + self.fdown_h(h_prev) + self.fdown_k(k))
+
+            f_left = F.sigmoid(self.fleft_word(word) + self.fleft_tag(tag)  \
+                               + self.fleft_h(h_prev) + self.fleft_k(k))
+
+            o = F.sigmoid(self.o_word(word) + self.o_tag(tag)  \
+                          + self.o_h(h_prev) + self.o_k(k))
+
+            u = F.tanh(self.u_word(word) + self.u_tag(tag)  \
+                       + self.u_h(h_prev) + self.u_k(k))
+
+        elif not self.tag_dim and self.rel_dim:
+            i = F.sigmoid(self.i_word(word)  + self.i_rel(rel) \
+                          + self.i_h(h_prev) + self.i_k(k))
+
+            f_down = F.sigmoid(self.fdown_word(word)  + self.fdown_rel(rel) \
+                               + self.fdown_h(h_prev) + self.fdown_k(k))
+
+            f_left = F.sigmoid(self.fleft_word(word)  + self.fleft_rel(rel) \
+                               + self.fleft_h(h_prev) + self.fleft_k(k))
+
+            o = F.sigmoid(self.o_word(word)  + self.o_rel(rel) \
+                          + self.o_h(h_prev) + self.o_k(k))
+
+            u = F.tanh(self.u_word(word)  + self.u_rel(rel) \
+                       + self.u_h(h_prev) + self.u_k(k))
+        elif not self.tag_dim and not self.rel_dim:
+            i = F.sigmoid(self.i_word(word)  \
+                          + self.i_h(h_prev) + self.i_k(k))
+
+            f_down = F.sigmoid(self.fdown_word(word)  \
+                               + self.fdown_h(h_prev) + self.fdown_k(k))
+
+            f_left = F.sigmoid(self.fleft_word(word)  \
+                               + self.fleft_h(h_prev) + self.fleft_k(k))
+
+            o = F.sigmoid(self.o_word(word)  \
+                          + self.o_h(h_prev) + self.o_k(k))
+
+            u = F.tanh(self.u_word(word)  \
+                       + self.u_h(h_prev) + self.u_k(k))
+        else:
+            assert False
+
+
 
         c = i * u + f_down * q + f_left * c_prev
 
@@ -230,12 +323,21 @@ class TreeCompositionLSTM(nn.Module):
         if tree.num_children == 0:
             return h, c
         else:
+            tag = None
+            if self.tag_dim:
+                tag = tag_emb[tree.idx - 1]
             h, c = self.parent_lstm.forward(
-                word_emb[tree.idx - 1], tag_emb[tree.idx - 1], training=training
+                word_emb[tree.idx - 1], tag, training=training
             )
             for child in tree.children:
+                tag = None
+                rel = None
+                if self.tag_dim:
+                    tag = tag_emb[child.idx - 1]
+                if self.rel_dim:
+                    rel = rel_emb[child.idx - 1]
                 h, c = self.composition_lstm.forward(
-                    word_emb[child.idx - 1], tag_emb[child.idx - 1], rel_emb[child.idx - 1], child.state[0],
+                    word_emb[child.idx - 1], tag, rel, child.state[0],
                     child.state[1], h, c, training=training
                 )
 
