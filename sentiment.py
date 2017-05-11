@@ -16,7 +16,7 @@ from meowlogtool import log_util
 # IMPORT CONSTANTS
 import Constants
 # NEURAL NETWORK MODULES/LAYERS
-from model_gru import *
+from model_comp_lstm import *
 from model import *
 # DATA HANDLING CLASSES
 from tree import Tree
@@ -112,7 +112,7 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     # initialize model, criterion/loss_function, optimizer
-    model = TreeGRUSentiment(
+    model = TreeCompositionLSTMSentiment(
                 args.cuda, args.input_dim,
                 args.tag_dim, args.rel_dim,
         args.mem_dim, args.at_hid_dim ,3, criterion

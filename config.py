@@ -45,11 +45,11 @@ def parse_args(type=0):
                             help='number of total epochs to run')
         parser.add_argument('--lr', default=0.05, type=float,
                             metavar='LR', help='initial learning rate')
-        parser.add_argument('--emblr', default=0, type=float,
+        parser.add_argument('--emblr', default=0.05, type=float,
                             metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
-        parser.add_argument('--tag_emblr', default=0, type=float,
+        parser.add_argument('--tag_emblr', default=0.05, type=float,
                             metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
-        parser.add_argument('--rel_emblr', default=0, type=float,
+        parser.add_argument('--rel_emblr', default=0.05, type=float,
                             metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--wd', default=1e-4, type=float,
                             help='weight decay (default: 1e-4)')
@@ -66,9 +66,9 @@ def parse_args(type=0):
                             help=' embedding dimension (default:30)')
         parser.add_argument('--mem_dim', default=150, type=int,
                             help='mem_dim (default:150)')
-        parser.add_argument('--tag_dim', default=20, type=int,
+        parser.add_argument('--tag_dim', default=50, type=int,
                             help='tag embedding dimension (default:20)')
-        parser.add_argument('--rel_dim', default=20, type=int,
+        parser.add_argument('--rel_dim', default=50, type=int,
                             help='rel embedding dimension (default:20)')
         parser.add_argument('--at_hid_dim', default=100, type=int,
                             help='hidden dim of attention (0 for disable)')

@@ -64,10 +64,10 @@ class CompositionLSTM(nn.Module):
 
         h = o * F.tanh(c)
 
-        return h, c
+        return h, c # todo: fix k [150]
 
 class TreeCompositionLSTM(nn.Module):
-    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion, leaf_h = None):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion):
         super(TreeCompositionLSTM, self).__init__()
         self.cudaFlag = cuda
         # self.gru_cell = nn.GRUCell(word_dim + tag_dim, mem_dim)
@@ -76,7 +76,7 @@ class TreeCompositionLSTM(nn.Module):
         self.tag_dim = tag_dim
         self.rel_dim = rel_dim
 
-        self.composition_lstm = CompositionLSTM(cuda, word_dim, tag_dim, rel_dim)
+        self.composition_lstm = CompositionLSTM(cuda, word_dim, tag_dim, rel_dim, mem_dim)
 
         self.criterion = criterion
         self.output_module = None
@@ -112,20 +112,14 @@ class TreeCompositionLSTM(nn.Module):
             _, child_loss = self.forward(tree.children[idx], w_emb, tag_emb, rel_emb, training)
             loss = loss + child_loss
 
-        if tree.num_children > 0:
-            child_rels, child_k  = self.get_child_state(tree, rel_emb)
-            if self.tag_dim > 0:
-                tree.state = self.node_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1], child_rels, child_k)
-            else:
-                tree.state = self.node_forward(w_emb[tree.idx - 1], None, child_rels, child_k)
-        elif tree.num_children == 0:
-            if self.tag_dim > 0:
-                tree.state = self.leaf_forward(w_emb[tree.idx - 1], tag_emb[tree.idx -1])
-            else:
-                tree.state = self.leaf_forward(w_emb[tree.idx - 1], None)
+        words, tags, rels, k, q  = self.get_child_state(tree, w_emb, tag_emb, rel_emb)
+        tree.state = self.node_forward(words, tags, rels, k, q, training)
+
+
 
         if self.output_module != None:
-            output = self.output_module.forward(tree.state, training)
+            k = tree.state[0]
+            output = self.output_module.forward(tree.state[0], training)
             tree.output = output
             if training and tree.gold_label != None:
                 target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
@@ -152,7 +146,7 @@ class TreeCompositionLSTM(nn.Module):
         h, c = h_zero, c_zero
         for t in xrange(0, n_child):
             h, c = self.composition_lstm.forward(
-                words[t], tags[t], rels[t], child_k[t], child_q[t]
+                words[t], tags[t], rels[t], child_k[t], child_q[t], h, c, training
             )
 
         k = h
@@ -174,16 +168,26 @@ class TreeCompositionLSTM(nn.Module):
                 rels = Var(torch.zeros(1, 1, self.rel_dim))
             k = Var(torch.zeros(1, 1, self.mem_dim))
             q = Var(torch.zeros(1, 1, self.mem_dim))
+
+            if self.cudaFlag:
+                words = words.cuda()
+                k = k.cuda()
+                q = q.cuda()
+                if self.tag_dim:
+                    tags = tags.cuda()
+                if self.rel_dim:
+                    rels = rels.cuda()
+
         else:
-            words = Var(torch.Tensor(tree.num_children, 1, self.mem_dim))
-            k = Var(torch.zeros(tree.num_children, 1, 1, self.mem_dim))
-            q = Var(torch.zeros(tree.num_children, 1, 1, self.mem_dim))
+            words = Var(torch.Tensor(tree.num_children, 1, self.in_dim))
+            k = Var(torch.zeros(tree.num_children, 1, self.mem_dim))
+            q = Var(torch.zeros(tree.num_children, 1, self.mem_dim))
             if self.rel_dim>0:
                 rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
             else:
                 rels = None
             if self.tag_dim>0:
-                tags = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
+                tags = Var(torch.Tensor(tree.num_children, 1, self.tag_dim))
             else:
                 tags = None
 
@@ -199,8 +203,8 @@ class TreeCompositionLSTM(nn.Module):
 
             for idx in xrange(tree.num_children):
                 words[idx] = word_emb[tree.children[idx].idx - 1]
-                k = tree.children[idx].state[0]
-                q = tree.children[idx].state[1]
+                k[idx] = tree.children[idx].state[0]
+                q[idx] = tree.children[idx].state[1]
                 if self.rel_dim > 0:
                     rels[idx] = rel_emb[tree.children[idx].idx - 1]
                 if self.tag_dim > 0:
