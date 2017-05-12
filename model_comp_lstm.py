@@ -6,7 +6,9 @@ import utils
 import Constants
 from model import SentimentModule
 from embedding_model import EmbeddingModel
-#TODO: Add drop out and attention
+
+
+# TODO: Add drop out and attention
 
 class Parent_LSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, mem_dim):
@@ -73,9 +75,9 @@ class Parent_LSTM(nn.Module):
             o = F.sigmoid(self.o_word(word) + self.o_tag(tag) + self.o_h(h_prev))
             u = F.tanh(self.u_word(word) + self.u_tag(tag) + self.u_h(h_prev))
         else:
-            i = F.sigmoid(self.i_word(word)  + self.i_h(h_prev))
-            f = F.sigmoid(self.f_word(word)  + self.f_h(h_prev))
-            o = F.sigmoid(self.o_word(word)  + self.o_h(h_prev))
+            i = F.sigmoid(self.i_word(word) + self.i_h(h_prev))
+            f = F.sigmoid(self.f_word(word) + self.f_h(h_prev))
+            o = F.sigmoid(self.o_word(word) + self.o_h(h_prev))
             u = F.tanh(self.u_word(word) + self.u_h(h_prev))
 
         c = i * u + f * c_prev
@@ -84,7 +86,7 @@ class Parent_LSTM(nn.Module):
 
 
 class CompositionLSTM(nn.Module):
-    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel, dropout=True):
         super(CompositionLSTM, self).__init__()
         self.cudaFlag = cuda
         self.word_dim = word_dim
@@ -92,6 +94,8 @@ class CompositionLSTM(nn.Module):
         self.rel_dim = rel_dim
         self.mem_dim = mem_dim
         self.rel_self = rel_sel
+        self.dropout = dropout
+
 
         self.fdown_word = nn.Linear(word_dim, mem_dim)
         if self.tag_dim:
@@ -176,10 +180,9 @@ class CompositionLSTM(nn.Module):
 
     # rel_dim > 0 => rel_dim True
     # rel_dim =  => rel_dim False
-    def forward(self, word, tag, rel = None, k = None, q = None, h_prev = None, c_prev = None, training=False):
+    def forward(self, word, tag, rel=None, k=None, q=None, h_prev=None, c_prev=None, training=False):
         if rel is None and self.rel_dim:
-            #rel = Var(torch.zeros(1, self.rel_dim), requires_grad=False)
-            #TODO: add self relationship to rel embedding
+            # rel = Var(torch.zeros(1, self.rel_dim), requires_grad=False)
             rel = self.rel_self
 
         if h_prev is None:
@@ -196,6 +199,19 @@ class CompositionLSTM(nn.Module):
             c_prev = c_prev.cuda()
             k = k.cuda()
             q = q.cuda()
+
+        if self.dropout:
+            word = F.dropout(word, p=0.1, training=training)
+            if tag is not None:
+                tag = F.dropout(tag, p=0.1, training=training)
+            if rel is not None:
+                rel = F.dropout(rel, p=0.1, training=training)
+
+            k = F.dropout(k, p=0.2, training=training)
+            q = F.dropout(q, p=0.2, training=training)
+            h_prev = F.dropout(h_prev, p=0.2, training=training)
+            c_prev = F.dropout(c_prev, p=0.2, training=training)
+
 
         if self.tag_dim and self.rel_dim:
             i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_rel(rel) \
@@ -220,49 +236,47 @@ class CompositionLSTM(nn.Module):
             f_down = F.sigmoid(self.fdown_word(word) + self.fdown_tag(tag) \
                                + self.fdown_h(h_prev) + self.fdown_k(k))
 
-            f_left = F.sigmoid(self.fleft_word(word) + self.fleft_tag(tag)  \
+            f_left = F.sigmoid(self.fleft_word(word) + self.fleft_tag(tag) \
                                + self.fleft_h(h_prev) + self.fleft_k(k))
 
-            o = F.sigmoid(self.o_word(word) + self.o_tag(tag)  \
+            o = F.sigmoid(self.o_word(word) + self.o_tag(tag) \
                           + self.o_h(h_prev) + self.o_k(k))
 
-            u = F.tanh(self.u_word(word) + self.u_tag(tag)  \
+            u = F.tanh(self.u_word(word) + self.u_tag(tag) \
                        + self.u_h(h_prev) + self.u_k(k))
 
         elif not self.tag_dim and self.rel_dim:
-            i = F.sigmoid(self.i_word(word)  + self.i_rel(rel) \
+            i = F.sigmoid(self.i_word(word) + self.i_rel(rel) \
                           + self.i_h(h_prev) + self.i_k(k))
 
-            f_down = F.sigmoid(self.fdown_word(word)  + self.fdown_rel(rel) \
+            f_down = F.sigmoid(self.fdown_word(word) + self.fdown_rel(rel) \
                                + self.fdown_h(h_prev) + self.fdown_k(k))
 
-            f_left = F.sigmoid(self.fleft_word(word)  + self.fleft_rel(rel) \
+            f_left = F.sigmoid(self.fleft_word(word) + self.fleft_rel(rel) \
                                + self.fleft_h(h_prev) + self.fleft_k(k))
 
-            o = F.sigmoid(self.o_word(word)  + self.o_rel(rel) \
+            o = F.sigmoid(self.o_word(word) + self.o_rel(rel) \
                           + self.o_h(h_prev) + self.o_k(k))
 
-            u = F.tanh(self.u_word(word)  + self.u_rel(rel) \
+            u = F.tanh(self.u_word(word) + self.u_rel(rel) \
                        + self.u_h(h_prev) + self.u_k(k))
         elif not self.tag_dim and not self.rel_dim:
-            i = F.sigmoid(self.i_word(word)  \
+            i = F.sigmoid(self.i_word(word) \
                           + self.i_h(h_prev) + self.i_k(k))
 
-            f_down = F.sigmoid(self.fdown_word(word)  \
+            f_down = F.sigmoid(self.fdown_word(word) \
                                + self.fdown_h(h_prev) + self.fdown_k(k))
 
-            f_left = F.sigmoid(self.fleft_word(word)  \
+            f_left = F.sigmoid(self.fleft_word(word) \
                                + self.fleft_h(h_prev) + self.fleft_k(k))
 
-            o = F.sigmoid(self.o_word(word)  \
+            o = F.sigmoid(self.o_word(word) \
                           + self.o_h(h_prev) + self.o_k(k))
 
-            u = F.tanh(self.u_word(word)  \
+            u = F.tanh(self.u_word(word) \
                        + self.u_h(h_prev) + self.u_k(k))
         else:
             assert False
-
-
 
         c = i * u + f_down * q + f_left * c_prev
 
@@ -272,7 +286,8 @@ class CompositionLSTM(nn.Module):
 
 
 class TreeCompositionLSTM(nn.Module):
-    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion, combine_head = 'mid', rel_self = None):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
+                 combine_head='mid', rel_self=None, dropout=True):
         super(TreeCompositionLSTM, self).__init__()
         self.cudaFlag = cuda
         self.mem_dim = mem_dim
@@ -280,14 +295,15 @@ class TreeCompositionLSTM(nn.Module):
         self.tag_dim = tag_dim
         self.rel_dim = rel_dim
         self.combine_head = combine_head
+        self.dropout = dropout
         if rel_dim and not rel_self:
-            rel_self = Var(torch.Tensor(1, self.rel_dim).normal_(-0.05,0.05))
+            rel_self = Var(torch.Tensor(1, self.rel_dim).normal_(-0.05, 0.05))
             if self.cudaFlag:
                 rel_self = rel_self.cuda()
         self.rel_self = rel_self
 
-        self.composition_lstm = CompositionLSTM(cuda, word_dim, tag_dim, rel_dim, mem_dim, self.rel_self)
-
+        self.composition_lstm = CompositionLSTM(cuda, word_dim, tag_dim, rel_dim, mem_dim, self.rel_self,
+                                                dropout=self.dropout)
 
         if combine_head != 'mid':
             self.parent_lstm = Parent_LSTM(cuda, word_dim, tag_dim, mem_dim)
@@ -386,7 +402,7 @@ class TreeCompositionLSTM(nn.Module):
                             word_emb[node.idx - 1], tag, rel, node.state[0],
                             node.state[1], h, c, training=training
                         )
-                    else: # no rel here # TODO: rel, tao dinh thiet ke kieu, neu mem_rel != None ma khong truyen rel thi mac dinh dung self
+                    else:  # no rel here # TODO: rel, tao dinh thiet ke kieu, neu mem_rel != None ma khong truyen rel thi mac dinh dung self
                         h, c = self.composition_lstm.forward(
                             word_emb[node.idx - 1], tag, h_prev=h, c_prev=c, training=training
                         )
@@ -446,19 +462,18 @@ class TreeCompositionLSTM(nn.Module):
 
 
 class TreeCompositionLSTMSentiment(nn.Module):
-    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion):
+    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion, dropout=True):
         super(TreeCompositionLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
-        self.tree_module = TreeCompositionLSTM(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.tree_module = TreeCompositionLSTM(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
+                                               dropout=dropout)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=dropout)
         self.tree_module.set_output_module(self.output_module)
-        self.dropout_module = nn.Dropout()
 
     def get_tree_parameters(self):
         return self.tree_module.getParameters()
 
     def forward(self, tree, sent_emb, tag_emb, rel_emb, training=False):
-        drop = self.dropout_module
-        tree_state, loss = self.tree_module(tree, drop(sent_emb), drop(tag_emb), drop(rel_emb), training)
+        tree_state, loss = self.tree_module(tree, sent_emb, tag_emb, rel_emb, training)
         output = tree.output
         return output, loss
