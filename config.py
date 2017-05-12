@@ -34,7 +34,7 @@ def parse_args(type=0):
                             help='directory with GLOVE embeddings')
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
-        parser.add_argument('--epochs', default=200, type=int,
+        parser.add_argument('--epochs', default=10, type=int,
                             help='number of total epochs to run')
         parser.add_argument('--lr', default=0.05, type=float,
                             metavar='LR', help='initial learning rate')

@@ -184,6 +184,29 @@ def main():
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
+    elif mode == "EXPERIMENT":
+        max_dev = 0
+        max_dev_epoch = 0
+        filename = 'model.pth'
+        for epoch in range(args.epochs):
+            train_loss             = trainer.train(train_dataset)
+            dev_loss, dev_pred     = trainer.test(dev_dataset)
+            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            print('==> Train loss   : %f \t' % train_loss, end="")
+            print('Epoch ',epoch, 'dev percentage ',dev_acc )
+            torch.save(model, str(epoch)+'_model_'+filename)
+            torch.save(embedding_model, str(epoch)+'_embedding_'+filename)
+            if dev_acc > max_dev:
+                max_dev = dev_acc
+                max_dev_epoch = epoch
+        print ('epoch ' + str(max_dev_epoch) +' dev score of ' + str(max_dev))
+        print ('eva on test set ')
+        model = torch.load(str(max_dev_epoch)+'_model_'+filename)
+        embedding_model = torch.load(str(max_dev_epoch)+'_embedding_'+filename)
+        trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
+        test_loss, test_pred = trainer.test(test_dataset)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        print('Epoch ', epoch, 'test percentage ', test_acc)
     else:
         for epoch in range(args.epochs):
             train_loss             = trainer.train(train_dataset)
