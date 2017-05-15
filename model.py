@@ -5,9 +5,118 @@ from torch.autograd import Variable as Var
 import Constants
 import utils
 
+class BinaryTreeNodeModule(nn.Module):
+    """
+  local input = nn.Identity()()
+  local c = nn.Linear(self.in_dim, self.mem_dim)(input)
+  local h
+  if self.gate_output then
+    local o = nn.Sigmoid()(nn.Linear(self.in_dim, self.mem_dim)(input))
+    h = nn.CMulTable(){o, nn.Tanh()(c)}
+  else
+    h = nn.Tanh()(c)
+  end
+
+  local leaf_module = nn.gModule({input}, {c, h})
+    """
+    def __init__(self, cuda, in_dim, mem_dim):
+        super(BinaryTreeNodeModule).__init__()
+        self.cudaFlag = cuda
+        self.in_dim = in_dim
+        self.mem_dim = mem_dim
+
+        self.cx = nn.Linear(self.in_dim, self.mem_dim)
+
+        if self.cudaFlag:
+            self.cx = self.cx.cuda()
+
+    def forward(self, input):
+        c = self.cx(input)
+        h = F.tanh(c)
+        return c, h
+
+class BinaryTreeComposer(nn.Module):
+    """
+  local lc, lh = nn.Identity()(), nn.Identity()()
+  local rc, rh = nn.Identity()(), nn.Identity()()
+  local new_gate = function()
+    return nn.CAddTable(){
+      nn.Linear(self.mem_dim, self.mem_dim)(lh),
+      nn.Linear(self.mem_dim, self.mem_dim)(rh)
+    }
+  end
+
+  local i = nn.Sigmoid()(new_gate())    -- input gate
+  local lf = nn.Sigmoid()(new_gate())   -- left forget gate
+  local rf = nn.Sigmoid()(new_gate())   -- right forget gate
+  local update = nn.Tanh()(new_gate())  -- memory cell update vector
+  local c = nn.CAddTable(){             -- memory cell
+      nn.CMulTable(){i, update},
+      nn.CMulTable(){lf, lc},
+      nn.CMulTable(){rf, rc}
+    }
+
+  local h
+  if self.gate_output then
+    local o = nn.Sigmoid()(new_gate()) -- output gate
+    h = nn.CMulTable(){o, nn.Tanh()(c)}
+  else
+    h = nn.Tanh()(c)
+  end
+  local composer = nn.gModule(
+    {lc, lh, rc, rh},
+    {c, h})    
+    """
+    def __init__(self, cuda, in_dim, mem_dim):
+        super(BinaryTreeComposer).__init__()
+        self.cudaFlag = cuda
+        self.in_dim = in_dim
+        self.mem_dim = mem_dim
+
+        def new_gate():
+            lh = nn.Linear(self.mem_dim, self.mem_dim)
+            rh = nn.Linear(self.mem_dim, self.mem_dim)
+            return lh, rh
+
+        self.ilh, self.irh = new_gate()
+        self.lflh, self.lfrh = new_gate()
+        self.rflh, self.rfrh = new_gate()
+        self.ulh, self.urh = new_gate()
+
+        if self.cudaFlag:
+            self.ilh = self.ilh.cuda()
+            self.irh = self.irh.cuda()
+            self.lflh = self.lflh.cuda()
+            self.lfrh = self.lfrh.cuda()
+            self.rflh = self.rflh.cuda()
+            self.rfrh = self.rfrh.cuda()
+            self.ulh = self.ulh.cuda()
+
+    def forward(self, lc, lh , rc, rh):
+        i = F.sigmoid(self.ilh(lh) + self.irh(rh))
+        lf = F.sigmoid(self.lflh(lh) + self.lfrh(rh))
+        rf = F.sigmoid(self.rflh(lh) + self.rfrh(rh))
+        update = F.tanh(self.ulh(lh) + self.urh(rh))
+        c =  i* update + lf*lc + rf*rc
+        h = F.tanh(c)
+        return c, h
+
+
+
+
+
+class BinaryTreeLSTM(nn.Module):
+    def __init__(self, cuda, in_dim, mem_dim, criterion):
+        super(BinaryTreeLSTM, self).__init__()
+        self.cudaFlag = cuda
+        self.in_dim = in_dim
+        self.mem_dim = mem_dim
+
+###################################################################
+
 # module for childsumtreelstm
 class ChildSumTreeLSTM(nn.Module):
-    def __init__(self, cuda, vocab_size, in_dim, mem_dim, criterion):
+    def __init__(self, cuda, in_dim, mem_dim, criterion):
         super(ChildSumTreeLSTM, self).__init__()
         self.cudaFlag = cuda
         self.in_dim = in_dim
@@ -114,6 +223,9 @@ class ChildSumTreeLSTM(nn.Module):
                 child_c[idx], child_h[idx] = tree.children[idx].state
         return child_c, child_h
 
+##############################################################################
+
+# output module
 class SentimentModule(nn.Module):
     def __init__(self, cuda, mem_dim, num_classes, dropout = False):
         super(SentimentModule, self).__init__()
@@ -138,7 +250,7 @@ class TreeLSTMSentiment(nn.Module):
     def __init__(self, cuda, vocab_size, in_dim, mem_dim, num_classes, criterion):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
-        self.tree_module = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
+        self.tree_module = ChildSumTreeLSTM(cuda, in_dim, mem_dim, criterion)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
         self.tree_module.set_output_module(self.output_module)
 
