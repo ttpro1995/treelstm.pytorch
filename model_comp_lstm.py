@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable as Var
 import utils
 import Constants
+import const
 from model import SentimentModule
 from embedding_model import EmbeddingModel
 
@@ -85,6 +86,60 @@ class Parent_LSTM(nn.Module):
         return h, c
 
 
+class Attention_MLP(nn.Module):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, rel_self, dropout=True):
+        super(Attention_MLP, self).__init__()
+        self.cudaFlag = cuda
+        self.word_dim = word_dim
+        self.tag_dim = tag_dim
+        self.rel_dim = rel_dim
+        self.dropout = dropout
+        self.rel_self = rel_self
+
+        self.Wa = nn.Linear(const.attention_hid_dim, 1)
+        self.l_word = nn.Linear(word_dim, const.attention_hid_dim)
+        if self.tag_dim:
+            self.l_tag = nn.Linear(tag_dim, const.attention_hid_dim)
+        if self.rel_dim:
+            self.l_rel = nn.Linear(rel_dim, const.attention_hid_dim)
+
+        if self.cudaFlag:
+            self.Wa = self.Wa.cuda()
+            self.l_word = self.l_word.cuda()
+            if self.tag_dim:
+                self.l_tag = self.l_tag.cuda()
+            if self.rel_dim:
+                self.l_rel = self.l_rel.cuda()
+
+    def forward(self, word, tag, rel=None, training=False):
+        if rel is None and self.rel_dim:
+            rel = self.rel_self
+
+        if self.dropout:
+            word = F.dropout(word, p=const.p_dropout_input, training=training)
+            if self.tag_dim:
+                tag = F.dropout(tag, p=const.p_dropout_input, training=training)
+            if self.rel_dim:
+                rel = F.dropout(rel, p=const.p_dropout_input, training=training)
+
+        if self.tag_dim and self.rel_dim:
+            g = F.sigmoid(self.Wa(F.tanh(self.l_word(word) + self.l_tag(tag) + self.l_rel(rel))))
+
+        elif self.tag_dim and not self.rel_dim:
+            g = F.sigmoid(self.Wa(F.tanh(self.l_word(word) + self.l_tag(tag))))
+
+        elif not self.tag_dim and self.rel_dim:
+            g = F.sigmoid(self.Wa(F.tanh(self.l_word(word) + self.l_rel(rel))))
+
+        elif not self.tag_dim and not self.rel_dim:
+            g = F.sigmoid(self.Wa(F.tanh(self.l_word(word))))
+
+        else:
+            assert False
+
+        return g
+
+
 class CompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel, dropout=True):
         super(CompositionLSTM, self).__init__()
@@ -95,7 +150,6 @@ class CompositionLSTM(nn.Module):
         self.mem_dim = mem_dim
         self.rel_self = rel_sel
         self.dropout = dropout
-
 
         self.fdown_word = nn.Linear(word_dim, mem_dim)
         if self.tag_dim:
@@ -201,17 +255,16 @@ class CompositionLSTM(nn.Module):
             q = q.cuda()
 
         if self.dropout:
-            word = F.dropout(word, p=0.1, training=training)
-            if tag is not None:
-                tag = F.dropout(tag, p=0.1, training=training)
-            if rel is not None:
-                rel = F.dropout(rel, p=0.1, training=training)
+            word = F.dropout(word, p=const.p_dropout_input, training=training)
+            if self.tag_dim:
+                tag = F.dropout(tag, p=const.p_dropout_input, training=training)
+            if self.rel_dim:
+                rel = F.dropout(rel, p=const.p_dropout_input, training=training)
 
-            k = F.dropout(k, p=0.2, training=training)
-            q = F.dropout(q, p=0.2, training=training)
-            h_prev = F.dropout(h_prev, p=0.2, training=training)
-            c_prev = F.dropout(c_prev, p=0.2, training=training)
-
+            k = F.dropout(k, p=const.p_dropout_memory, training=training)
+            q = F.dropout(q, p=const.p_dropout_memory, training=training)
+            h_prev = F.dropout(h_prev, p=const.p_dropout_memory, training=training)
+            c_prev = F.dropout(c_prev, p=const.p_dropout_memory, training=training)
 
         if self.tag_dim and self.rel_dim:
             i = F.sigmoid(self.i_word(word) + self.i_tag(tag) + self.i_rel(rel) \
@@ -287,7 +340,7 @@ class CompositionLSTM(nn.Module):
 
 class TreeCompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
-                 combine_head='mid', rel_self=None, dropout=True):
+                 combine_head='mid', rel_self=None, dropout=True, attention = False):
         super(TreeCompositionLSTM, self).__init__()
         self.cudaFlag = cuda
         self.mem_dim = mem_dim
@@ -296,6 +349,7 @@ class TreeCompositionLSTM(nn.Module):
         self.rel_dim = rel_dim
         self.combine_head = combine_head
         self.dropout = dropout
+        self.attention = attention
         if rel_dim and not rel_self:
             rel_self = Var(torch.Tensor(1, self.rel_dim).normal_(-0.05, 0.05))
             if self.cudaFlag:
@@ -304,7 +358,8 @@ class TreeCompositionLSTM(nn.Module):
 
         self.composition_lstm = CompositionLSTM(cuda, word_dim, tag_dim, rel_dim, mem_dim, self.rel_self,
                                                 dropout=self.dropout)
-
+        if self.attention:
+            self.attention = Attention_MLP(cuda, word_dim, tag_dim, rel_dim, rel_self=self.rel_self, dropout=self.dropout)
         if combine_head != 'mid':
             self.parent_lstm = Parent_LSTM(cuda, word_dim, tag_dim, mem_dim)
 
@@ -390,6 +445,8 @@ class TreeCompositionLSTM(nn.Module):
                 list_node = tree.children
                 list_node.append(tree)
                 phrase = sorted(list_node, key=lambda k: k.idx)
+                h_prev = h
+                c_prev = c
                 for node in phrase:
                     tag = None
                     rel = None
@@ -400,12 +457,20 @@ class TreeCompositionLSTM(nn.Module):
                     if node.idx != tree.idx:
                         h, c = self.composition_lstm.forward(
                             word_emb[node.idx - 1], tag, rel, node.state[0],
-                            node.state[1], h, c, training=training
+                            node.state[1], h_prev, c_prev, training=training
                         )
-                    else:  # no rel here # TODO: rel, tao dinh thiet ke kieu, neu mem_rel != None ma khong truyen rel thi mac dinh dung self
+                        if self.attention:
+                            g = self.attention.forward(word_emb[node.idx - 1], tag, rel, training=training)
+                    else:
                         h, c = self.composition_lstm.forward(
-                            word_emb[node.idx - 1], tag, h_prev=h, c_prev=c, training=training
+                            word_emb[node.idx - 1], tag, h_prev=h_prev, c_prev=c_prev, training=training
                         )
+                        if self.attention:
+                            g = self.attention.forward(word_emb[node.idx - 1], tag, training=training)
+                    if self.attention:
+                        h = torch.mm(g, h) + torch.mm((1 - g), h_prev)
+                    h_prev = h
+                    c_prev = c
 
         k = h
         q = c
@@ -466,7 +531,7 @@ class TreeCompositionLSTMSentiment(nn.Module):
         super(TreeCompositionLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.tree_module = TreeCompositionLSTM(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
-                                               dropout=dropout)
+                                               dropout=dropout, attention=const.attention)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=dropout)
         self.tree_module.set_output_module(self.output_module)
 

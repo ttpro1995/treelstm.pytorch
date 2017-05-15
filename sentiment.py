@@ -35,12 +35,13 @@ from trainer import SentimentTrainer
 from embedding_model import EmbeddingModel
 
 import gc
-
+import const
 # MAIN BLOCK
 def main():
     global args
     args = parse_args(type=1)
     print_config(args)
+    const.show_setting()
 
     args.word_dim= args.input_dim
     if args.fine_grain:
