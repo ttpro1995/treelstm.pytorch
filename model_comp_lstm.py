@@ -6,6 +6,7 @@ import utils
 import Constants
 import const
 from model import SentimentModule
+import config
 from embedding_model import EmbeddingModel
 
 
@@ -193,6 +194,7 @@ class com_MLP(nn.Module):
 class CompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel, dropout=True):
         super(CompositionLSTM, self).__init__()
+        self.args = config.parse_args(type=1)
         self.cudaFlag = cuda
         self.word_dim = word_dim
         self.tag_dim = tag_dim
@@ -206,7 +208,7 @@ class CompositionLSTM(nn.Module):
         #     self.fdown_tag = nn.Linear(tag_dim, mem_dim)
         # if self.rel_dim:
         #     self.fdown_rel = nn.Linear(rel_dim, mem_dim)
-        self.fdown_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+
         self.fdown_k = nn.Linear(mem_dim, mem_dim)
         self.fdown_h = nn.Linear(mem_dim, mem_dim)
 
@@ -215,7 +217,7 @@ class CompositionLSTM(nn.Module):
         #     self.fleft_tag = nn.Linear(tag_dim, mem_dim)
         # if self.rel_dim:
         #     self.fleft_rel = nn.Linear(rel_dim, mem_dim)
-        self.fleft_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+
         self.fleft_k = nn.Linear(mem_dim, mem_dim)
         self.fleft_h = nn.Linear(mem_dim, mem_dim)
 
@@ -224,7 +226,7 @@ class CompositionLSTM(nn.Module):
         #     self.o_tag = nn.Linear(tag_dim, mem_dim)
         # if self.rel_dim:
         #     self.o_rel = nn.Linear(rel_dim, mem_dim)
-        self.o_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+
         self.o_k = nn.Linear(mem_dim, mem_dim)
         self.o_h = nn.Linear(mem_dim, mem_dim)
 
@@ -233,7 +235,7 @@ class CompositionLSTM(nn.Module):
         #     self.u_tag = nn.Linear(tag_dim, mem_dim)
         # if self.rel_dim:
         #     self.u_rel = nn.Linear(rel_dim, mem_dim)
-        self.u_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+
         self.u_k = nn.Linear(mem_dim, mem_dim)
         self.u_h = nn.Linear(mem_dim, mem_dim)
 
@@ -242,9 +244,23 @@ class CompositionLSTM(nn.Module):
         #     self.i_tag = nn.Linear(tag_dim, mem_dim)
         # if self.rel_dim:
         #     self.i_rel = nn.Linear(rel_dim, mem_dim)
-        self.i_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+
         self.i_k = nn.Linear(mem_dim, mem_dim)
         self.i_h = nn.Linear(mem_dim, mem_dim)
+
+        if self.args.share_mlp:
+            self.mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+            self.i_mlp = self.mlp
+            self.u_mlp = self.mlp
+            self.o_mlp = self.mlp
+            self.fleft_mlp = self.mlp
+            self.fdown_mlp = self.mlp
+        else:
+            self.fdown_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+            self.fleft_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+            self.o_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+            self.u_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
+            self.i_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
 
         if self.cudaFlag:
             # self.fdown_word = self.fdown_word.cuda()

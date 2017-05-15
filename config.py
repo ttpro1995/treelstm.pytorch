@@ -72,6 +72,8 @@ def parse_args(type=0):
                             help='rel embedding dimension (default:20)')
         parser.add_argument('--at_hid_dim', default=100, type=int,
                             help='hidden dim of attention (0 for disable)')
+        parser.add_argument('--share_mlp', default=0, type=int,
+                            help='share com_mlp (0 for disable)')
 
         parser.add_argument('--name', default='default_log',
                             help='log name (default: default_log)')
