@@ -99,9 +99,6 @@ def main():
                 args.num_classes, criterion
             )
 
-    # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
-    #                             padding_idx=Constants.PAD)
-
     embedding_model = nn.Embedding(vocab.size(), args.input_dim)
 
     if args.cuda:
@@ -115,7 +112,6 @@ def main():
         # optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
         optimizer = optim.Adagrad([
                 {'params': model.parameters(), 'lr': args.lr}
-                # {'params': embedding_model.parameters(), 'lr': args.emblr}
             ], lr=args.lr, weight_decay=args.wd)
     metrics = Metrics(args.num_classes)
 
@@ -131,12 +127,9 @@ def main():
         # load glove embeddings and vocab
         glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove,'glove.840B.300d'))
         print('==> GLOVE vocabulary size: %d ' % glove_vocab.size())
-        # emb = torch.Tensor(vocab.size(),glove_emb.size(1)).normal_(-0.05,0.05)
+
         emb = torch.zeros(vocab.size(),glove_emb.size(1))
-        # zero out the embeddings for padding and other special words if they are absent in vocab
-        # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
-        #     emb[idx].zero_()
-        # torch.manual_seed(555)
+
         for word in vocab.labelToIdx.keys():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
