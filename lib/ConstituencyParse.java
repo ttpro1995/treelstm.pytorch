@@ -2,10 +2,12 @@ import edu.stanford.nlp.process.WordTokenFactory;
 import edu.stanford.nlp.ling.HasWord;
 import edu.stanford.nlp.ling.Word;
 import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.ling.TaggedWord;
 import edu.stanford.nlp.process.PTBTokenizer;
 import edu.stanford.nlp.util.StringUtils;
 import edu.stanford.nlp.parser.lexparser.LexicalizedParser;
 import edu.stanford.nlp.parser.lexparser.TreeBinarizer;
+import edu.stanford.nlp.tagger.maxent.MaxentTagger;
 import edu.stanford.nlp.trees.GrammaticalStructure;
 import edu.stanford.nlp.trees.GrammaticalStructureFactory;
 import edu.stanford.nlp.trees.PennTreebankLanguagePack;
@@ -26,9 +28,9 @@ import java.util.Properties;
 import java.util.Scanner;
 
 public class ConstituencyParse {
-
+  
   private boolean tokenize;
-  private BufferedWriter tokWriter, parentWriter;
+  private BufferedWriter tokWriter, parentWriter, tagWriter;
   private LexicalizedParser parser;
   private TreeBinarizer binarizer;
   private CollapseUnaryTransformer transformer;
@@ -36,17 +38,19 @@ public class ConstituencyParse {
 
   private static final String PCFG_PATH = "edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz";
 
-  public ConstituencyParse(String tokPath, String parentPath, boolean tokenize) throws IOException {
+  public ConstituencyParse(String tokPath, String parentPath, String tagPath, boolean tokenize) throws IOException {
     this.tokenize = tokenize;
     if (tokPath != null) {
       tokWriter = new BufferedWriter(new FileWriter(tokPath));
     }
     parentWriter = new BufferedWriter(new FileWriter(parentPath));
+    tagWriter = new BufferedWriter(new FileWriter(tagPath));
     parser = LexicalizedParser.loadModel(PCFG_PATH);
     binarizer = TreeBinarizer.simpleTreeBinarizer(
       parser.getTLPParams().headFinder(), parser.treebankLanguagePack());
     transformer = new CollapseUnaryTransformer();
 
+    
     // set up to produce dependency representations from constituency trees
     TreebankLanguagePack tlp = new PennTreebankLanguagePack();
     gsf = tlp.grammaticalStructureFactory();
@@ -71,6 +75,48 @@ public class ConstituencyParse {
   public Tree parse(List<HasWord> tokens) {
     Tree tree = parser.apply(tokens);
     return tree;
+  }
+  
+    public String[] constTreePOSTAG(Tree tree) {
+    Tree binarized = binarizer.transformTree(tree);
+    Tree collapsedUnary = transformer.transformTree(binarized);
+    Trees.convertToCoreLabels(collapsedUnary);
+    collapsedUnary.indexSpans();
+    List<Tree> leaves = collapsedUnary.getLeaves();
+    int size = collapsedUnary.size() - leaves.size();
+    String[] tags = new String[size];
+    HashMap<Integer, Integer> index = new HashMap<Integer, Integer>();
+
+    int idx = leaves.size();
+    int leafIdx = 0;
+    for (Tree leaf : leaves) {
+      Tree cur = leaf.parent(collapsedUnary); // go to preterminal
+      int curIdx = leafIdx++;
+      boolean done = false;
+      while (!done) {
+        Tree parent = cur.parent(collapsedUnary);
+        if (parent == null) {
+          tags[curIdx] = cur.label().toString();
+          break;
+        }
+
+        int parentIdx;
+        int parentNumber = parent.nodeNumber(collapsedUnary);
+        if (!index.containsKey(parentNumber)) {
+          parentIdx = idx++;
+          index.put(parentNumber, parentIdx);
+        } else {
+          parentIdx = index.get(parentNumber);
+          done = true;
+        }
+
+        tags[curIdx] = parent.label().toString();
+        cur = parent;
+        curIdx = parentIdx;
+      }
+    }
+
+    return tags;
   }
 
   public int[] constTreeParents(Tree tree) {
@@ -171,13 +217,27 @@ public class ConstituencyParse {
     sb.append('\n');
     parentWriter.write(sb.toString());
   }
+  
+  public void printTags(String[] tags) throws IOException {
+    StringBuilder sb = new StringBuilder();
+    int size = tags.length;
+    for (int i = 0; i < size - 1; i++) {
+      sb.append(tags[i]);
+      sb.append(' ');
+    }
+    sb.append(tags[size - 1]);
+    sb.append('\n');
+    tagWriter.write(sb.toString().toLowerCase());
+  }
 
   public void close() throws IOException {
     if (tokWriter != null) tokWriter.close();
     parentWriter.close();
+    tagWriter.close();
   }
 
   public static void main(String[] args) throws Exception {
+    String TAGGER_MODEL = "stanford-tagger/models/english-left3words-distsim.tagger";
     Properties props = StringUtils.argsToProperties(args);
     if (!props.containsKey("parentpath")) {
       System.err.println(
@@ -196,10 +256,12 @@ public class ConstituencyParse {
     if (props.containsKey("deps")) {
       deps = true;
     }
-
+    
     String tokPath = props.containsKey("tokpath") ? props.getProperty("tokpath") : null;
     String parentPath = props.getProperty("parentpath");
-    ConstituencyParse processor = new ConstituencyParse(tokPath, parentPath, tokenize);
+    String tagPath = props.getProperty("tagpath");
+    
+    ConstituencyParse processor = new ConstituencyParse(tokPath, parentPath, tagPath, tokenize);
 
     Scanner stdin = new Scanner(System.in);
     int count = 0;
@@ -207,20 +269,36 @@ public class ConstituencyParse {
     while (stdin.hasNextLine()) {
       String line = stdin.nextLine();
       List<HasWord> tokens = processor.sentenceToTokens(line);
+      
+      //end tagger
+      
       Tree parse = processor.parse(tokens);
 
       // produce parent pointer representation
       int[] parents = deps ? processor.depTreeParents(parse, tokens)
                            : processor.constTreeParents(parse);
       
+      String[] tags = processor.constTreePOSTAG(parse);
+      
       // print
       if (tokPath != null) {
         processor.printTokens(tokens);
       }
       processor.printParents(parents);
+      processor.printTags(tags);
+      // print tag
+      StringBuilder sb = new StringBuilder();
+      int size = tags.length;
+      for (int i = 0; i < size - 1; i++) {
+         sb.append(tags[i]);
+         sb.append(' ');
+      }
+      sb.append(tags[size - 1]);
+      sb.append('\n');
 
+      
       count++;
-      if (count % 1000 == 0) {
+      if (count % 100 == 0) {
         double elapsed = (System.currentTimeMillis() - start) / 1000.0;
         System.err.printf("Parsed %d lines (%.2fs)\n", count, elapsed);
       }
@@ -228,7 +306,7 @@ public class ConstituencyParse {
 
     long totalTimeMillis = System.currentTimeMillis() - start;
     System.err.printf("Done: %d lines in %.2fs (%.1fms per line)\n",
-      count, totalTimeMillis / 1000.0, totalTimeMillis / (double) count);
+      count, totalTimeMillis / 100.0, totalTimeMillis / (double) count);
     processor.close();
   }
 }

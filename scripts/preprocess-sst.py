@@ -317,6 +317,20 @@ def dependency_parse(filepath, cp='', tokenize=True):
     tokenize_flag = '-tokenize - ' if tokenize else ''
     cmd = ('java -cp %s DependencyParse -tokpath %s -parentpath %s -relpath %s -tagpath %s %s < %s'
         % (cp, tokpath, parentpath, relpath, tagpath, tokenize_flag, filepath))
+    print (cmd)
+    os.system(cmd)
+
+def constituency_parse(filepath, cp='', tokenize=True):
+    print('\nConstituency parsing ' + filepath)
+    dirpath = os.path.dirname(filepath)
+    filepre = os.path.splitext(os.path.basename(filepath))[0]
+    tokpath = os.path.join(dirpath, filepre + '.toksc')
+    parentpath = os.path.join(dirpath, 'cparents.txt')
+    tagpath = os.path.join(dirpath, 'ctags.txt')
+    tokenize_flag = '-tokenize - ' if tokenize else ''
+    cmd = ('java -cp %s ConstituencyParse -tokpath %s -parentpath %s -tagpath %s %s < %s'
+        % (cp, tokpath, parentpath, tagpath, tokenize_flag, filepath))
+    print (cmd)
     os.system(cmd)
 
 if __name__ == '__main__':
@@ -344,6 +358,7 @@ if __name__ == '__main__':
         os.path.join(lib_dir, 'stanford-parser/stanford-parser-3.5.1-models.jar')])
     for filepath in sent_paths:
         dependency_parse(filepath, cp=classpath, tokenize=False)
+        constituency_parse(filepath, cp=classpath, tokenize=False)
 
     # get vocabulary
     build_vocab(sent_paths, os.path.join(sst_dir, 'vocab.txt'))
