@@ -271,7 +271,8 @@ def main():
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
         test_loss, test_pred = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
-        print('Epoch ', epoch, 'test percentage ', test_acc)
+        print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage '+ str(test_acc))
+        print ('____________________'+str(args.name)+'___________________')
     else:
         for epoch in range(args.epochs):
             train_loss             = trainer.train(train_dataset)
