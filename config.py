@@ -34,9 +34,9 @@ def parse_args(type=0):
                             help='path to save location')
         parser.add_argument('--glove', default='data/glove/',
                             help='directory with GLOVE embeddings')
-        parser.add_argument('--tag_glove', default=False, type=bool,
+        parser.add_argument('--tag_glove', default=0, type=int,
                             help='use tag embedding pretrained by glove')
-        parser.add_argument('--rel_glove', default=False, type=bool,
+        parser.add_argument('--rel_glove', default=0, type=int,
                             help='use rel embedding pretrained by glove')
 
         parser.add_argument('--batchsize', default=25, type=int,
