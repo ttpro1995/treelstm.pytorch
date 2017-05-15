@@ -151,8 +151,10 @@ class com_MLP(nn.Module):
         self.hid_dim = const.mlp_com_hid_dim
         self.out_dim = const.mlp_com_out_dim
         self.num_layer = const.mlp_num_hid_layer
-        self.hid_layers= [] # list of hidden layer (empty if hidden layer = 0)
+        self.hid_layers= nn.Sequential() # list of hidden layer (empty if hidden layer = 0)
         self.l_word = nn.Linear(word_dim, const.mlp_com_hid_dim)
+
+
         if self.tag_dim:
             self.l_tag = nn.Linear(tag_dim, const.mlp_com_hid_dim)
         if self.rel_dim:
@@ -160,14 +162,13 @@ class com_MLP(nn.Module):
 
         self.l_last = nn.Linear(const.mlp_com_hid_dim, const.mlp_com_out_dim)
 
-        for i in range(self.num_layer):
+        for i in range(self.num_layer): # add hidden layer into sequential module
             l = nn.Linear(const.mlp_com_hid_dim, const.mlp_com_hid_dim)
-            if self.cudaFlag:
-                l = l.cuda()
-            self.hid_layers.append(l)
+            self.hid_layers.add_module(l)
 
         if self.cudaFlag:
             self.l_word = self.l_word.cuda()
+            self.hid_layers = self.hid_layers.cuda()
             if self.tag_dim:
                 self.l_tag = self.l_tag.cuda()
             if self.rel_dim:
@@ -185,9 +186,7 @@ class com_MLP(nn.Module):
 
         if self.num_layer == -1:
             return h0
-        h = h0
-        for l in self.hid_layers:
-            h = F.tanh(l(h))
+        h = F.tanh(self.hid_layers(h0))
         out = F.tanh(self.l_last(h))
         return out
 
