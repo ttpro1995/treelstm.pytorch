@@ -28,6 +28,11 @@ def parse_args(type=0):
         return args
     else:
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analysis Trees')
+        parser.add_argument('--name', default='default_name',
+                            help='name for log and saved models')
+        parser.add_argument('--saved', default='saved_model',
+                            help='name for log and saved models')
+
         parser.add_argument('--model_name', default='constituency',
                             help='model name constituency or dependency')
         parser.add_argument('--data', default='data/sst/',
