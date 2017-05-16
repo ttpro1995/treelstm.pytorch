@@ -69,7 +69,7 @@ def main():
     if os.path.isfile(train_file):
         train_dataset = torch.load(train_file)
     else:
-        train_dataset = SSTDataset(train_dir, vocab, args.num_classes, args.fine_grain)
+        train_dataset = SSTDataset(train_dir, vocab, args.num_classes, args.fine_grain, args.model_name)
         torch.save(train_dataset, train_file)
         is_preprocessing_data = True
 
@@ -78,7 +78,7 @@ def main():
     if os.path.isfile(dev_file):
         dev_dataset = torch.load(dev_file)
     else:
-        dev_dataset = SSTDataset(dev_dir, vocab, args.num_classes, args.fine_grain)
+        dev_dataset = SSTDataset(dev_dir, vocab, args.num_classes, args.fine_grain, args.model_name)
         torch.save(dev_dataset, dev_file)
         is_preprocessing_data = True
 
@@ -87,7 +87,7 @@ def main():
     if os.path.isfile(test_file):
         test_dataset = torch.load(test_file)
     else:
-        test_dataset = SSTDataset(test_dir, vocab, args.num_classes, args.fine_grain)
+        test_dataset = SSTDataset(test_dir, vocab, args.num_classes, args.fine_grain, args.model_name)
         torch.save(test_dataset, test_file)
         is_preprocessing_data = True
 
@@ -96,7 +96,7 @@ def main():
     model = TreeLSTMSentiment(
                 args.cuda, vocab.size(),
                 args.input_dim, args.mem_dim,
-                args.num_classes, criterion
+                args.num_classes, args.model_name, criterion
             )
 
     embedding_model = nn.Embedding(vocab.size(), args.input_dim)

@@ -27,7 +27,9 @@ def parse_args(type=0):
         args = parser.parse_args()
         return args
     else:
-        parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analyusis on Dependency Trees')
+        parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analysis Trees')
+        parser.add_argument('--model_name', default='constituency',
+                            help='model name constituency or dependency')
         parser.add_argument('--data', default='data/sst/',
                             help='path to dataset')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',

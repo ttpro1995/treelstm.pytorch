@@ -88,15 +88,18 @@ class SICKDataset(data.Dataset):
 
 # Dataset class for SICK dataset
 class SSTDataset(data.Dataset):
-    def __init__(self, path, vocab, num_classes, fine_grain):
+    def __init__(self, path, vocab, num_classes, fine_grain, model_name):
         super(SSTDataset, self).__init__()
         self.vocab = vocab
         self.num_classes = num_classes
         self.fine_grain = fine_grain
+        self.model_name = model_name
 
         temp_sentences = self.read_sentences(os.path.join(path,'sents.toks'))
-
-        temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
+        if model_name == "dependency":
+            temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'))
+        else:
+            temp_trees = self.read_trees(os.path.join(path, 'parents.txt'), os.path.join(path, 'labels.txt'))
 
         # self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
         self.labels = []
