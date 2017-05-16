@@ -78,3 +78,28 @@ def count_param(model):
     # sum_param-= emb_sum
     print ('sum', sum_param)
     print('____________')
+
+def print_tree(vocab, tag_vocab, word, tree, level):
+    """
+    Print tree for debug
+    :param vocab: 
+    :param input: 
+    :param tree: 
+    :param level: 
+    :return: 
+    """
+    indent = ''
+    leaf_range = len(word)
+    for i in range(level):
+        indent += '| '
+    line = indent + str(tree.idx) + ' '
+    # tag
+    line += str(tag_vocab.idxToLabel[tree.tags]).upper()+' '
+    # word
+    if tree.idx -1 < leaf_range:
+        line += str(vocab.idxToLabel[word[tree.idx-1]])+' '
+
+    line += '  '
+    print (line)
+    for i in xrange(tree.num_children):
+        print_tree(vocab, tag_vocab, word,tree.children[i], level+1)

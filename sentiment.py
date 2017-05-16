@@ -22,7 +22,7 @@ from model import *
 from tree import Tree
 from vocab import Vocab
 # DATASET CLASS FOR SICK DATASET
-from dataset import SSTDataset
+from dataset import SSTConstituencyDataset
 # METRICS CLASS FOR EVALUATION
 from metrics import Metrics
 # UTILITY FUNCTIONS
@@ -39,7 +39,7 @@ import gc
 # MAIN BLOCK
 def main():
     global args
-    args = parse_args(type=1)
+    args = parse_args(type=Constants.TYPE_constituency)
     print_config(args)
 
     args.word_dim= args.input_dim
@@ -60,22 +60,17 @@ def main():
     test_dir = os.path.join(args.data,'test/')
 
     # write unique words from all token files
-    token_files = [os.path.join(split, 'sents.toks') for split in [train_dir, dev_dir, test_dir]]
-    rel_token_files = [os.path.join(split, 'rels.txt') for split in [train_dir, dev_dir, test_dir]]
-    tag_token_files = [os.path.join(split, 'tags.txt') for split in [train_dir, dev_dir, test_dir]]
+    token_files = [os.path.join(split, 'sents.toksc') for split in [train_dir, dev_dir, test_dir]]
+    tag_token_files = [os.path.join(split, 'ctags.txt') for split in [train_dir, dev_dir, test_dir]]
     vocab_file = os.path.join(args.data,'vocab.txt')
-    rel_vocab_file = os.path.join(args.data, 'relvocab.txt')
     tag_vocab_file = os.path.join(args.data, 'tagvocab.txt')
     build_vocab(token_files, vocab_file)
-    build_vocab(rel_token_files, rel_vocab_file)
     build_vocab(tag_token_files, tag_vocab_file)
 
     # get vocab object from vocab file previously written
     vocab = Vocab(filename=vocab_file)
-    relvocab = Vocab(filename=rel_vocab_file)
     tagvocab = Vocab(filename=tag_vocab_file)
     print('==> SST vocabulary size : %d ' % vocab.size())
-    print('==> SST rel vocabulary size : %d ' % relvocab.size())
     print('==> SST tag vocabulary size : %d ' % tagvocab.size())
 
 
@@ -88,7 +83,7 @@ def main():
     if os.path.isfile(train_file):
         train_dataset = torch.load(train_file)
     else:
-        train_dataset = SSTDataset(train_dir, vocab, tagvocab, relvocab, args.num_classes, args.fine_grain)
+        train_dataset = SSTConstituencyDataset(train_dir, vocab, tagvocab, args.num_classes, args.fine_grain)
         torch.save(train_dataset, train_file)
         is_preprocessing_data = True
 
@@ -97,7 +92,7 @@ def main():
     if os.path.isfile(dev_file):
         dev_dataset = torch.load(dev_file)
     else:
-        dev_dataset = SSTDataset(dev_dir, vocab, tagvocab, relvocab, args.num_classes, args.fine_grain)
+        dev_dataset = SSTConstituencyDataset(dev_dir, vocab, tagvocab, args.num_classes, args.fine_grain)
         torch.save(dev_dataset, dev_file)
         is_preprocessing_data = True
 
@@ -106,7 +101,7 @@ def main():
     if os.path.isfile(test_file):
         test_dataset = torch.load(test_file)
     else:
-        test_dataset = SSTDataset(test_dir, vocab, tagvocab, relvocab, args.num_classes, args.fine_grain)
+        test_dataset = SSTConstituencyDataset(test_dir, vocab, tagvocab, args.num_classes, args.fine_grain)
         torch.save(test_dataset, test_file)
         is_preprocessing_data = True
 
@@ -121,7 +116,7 @@ def main():
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
     #                             padding_idx=Constants.PAD)
 
-    embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), relvocab.size(), args.word_dim, args.tag_dim, args.rel_dim)
+    embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), 0, args.word_dim, args.tag_dim, args.rel_dim)
 
     if args.cuda:
         model.cuda(), criterion.cuda()
@@ -189,25 +184,7 @@ def main():
         is_preprocessing_data = True  # flag to quit
         print('done creating emb, quit')
 
-    rel_emb_file = os.path.join(args.data, 'rel_embed.pth')
-    if os.path.isfile(rel_emb_file):
-        rel_emb = torch.load(rel_emb_file)
-    else:
-        # load glove embeddings and vocab
-        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove, 'relglove'))
-        print('==> REL GLOVE vocabulary size: %d ' % glove_vocab.size())
-        rel_emb = torch.zeros(relvocab.size(), glove_emb.size(1))
-        # zero out the embeddings for padding and other special words if they are absent in vocab
-        # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
-        #     emb[idx].zero_()
-        # torch.manual_seed(555)
-        for word in relvocab.labelToIdx.keys():
-            if glove_vocab.getIndex(word):
-                rel_emb[relvocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
-            else:
-                rel_emb[relvocab.getIndex(word)] = torch.Tensor(rel_emb[relvocab.getIndex(word)].size()).normal_(-0.05,
-                                                                                                              0.05)
-        torch.save(rel_emb, rel_emb_file)
+
         is_preprocessing_data = True  # flag to quit
         print('done creating emb, quit')
 
@@ -229,13 +206,13 @@ def main():
         assert args.tag_dim == 50
         embedding_model.tag_emb.state_dict()['weight'].copy_(tag_emb)
     if args.rel_glove:
-        assert args.rel_dim == 50
-        embedding_model.rel_emb.state_dict()['weight'].copy_(rel_emb)
+        assert False
+
 
     # create trainer object for training and testing
     trainer  = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
 
-    mode = 'EXPERIMENT'
+    mode = 'PRINT_TREE'
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             dev_loss = trainer.train(dev_dataset)
@@ -246,6 +223,13 @@ def main():
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
+    elif mode == "PRINT_TREE":
+        for i in range(0, 10):
+            ttree, tsent, ttag, trel ,tlabel = dev_dataset[i]
+            utils.print_tree(vocab, tagvocab, tsent, ttree, 0)
+            print ('_______________')
+        print ('break')
+        quit()
     elif mode == "EXPERIMENT":
         max_dev = 0
         max_dev_epoch = 0
@@ -255,7 +239,7 @@ def main():
             dev_loss, dev_pred     = trainer.test(dev_dataset)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             print('==> Train loss   : %f \t' % train_loss, end="")
-            print('Epoch ',epoch, 'dev percentage ',dev_acc )
+            print('Epoch ',epoch, 'dev percentage ',dev_acc)
             torch.save(model, args.saved + str(epoch)+'_model_'+filename)
             torch.save(embedding_model, args.saved + str(epoch)+'_embedding_'+filename)
             if dev_acc > max_dev:
