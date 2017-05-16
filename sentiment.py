@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable as Var
 import utils
-
+import gc
 import sys
 from meowlogtool import log_util
 
@@ -153,21 +153,63 @@ def main():
     # create trainer object for training and testing
     trainer     = SentimentTrainer(args, model, embedding_model ,criterion, optimizer)
 
-    for epoch in range(args.epochs):
-        train_loss             = trainer.train(train_dataset)
-        train_loss, train_pred = trainer.test(train_dataset)
-        dev_loss, dev_pred     = trainer.test(dev_dataset)
-        test_loss, test_pred   = trainer.test(test_dataset)
+    mode = 'EXPERIMENT'
+    if mode == 'DEBUG':
+        for epoch in range(args.epochs):
+            dev_loss = trainer.train(dev_dataset)
+            dev_loss, dev_pred = trainer.test(dev_dataset)
+            test_loss, test_pred = trainer.test(test_dataset)
 
-        # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
-        train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
-        dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+            print('==> Dev loss   : %f \t' % dev_loss, end="")
+            print('Epoch ', epoch, 'dev percentage ', dev_acc)
+    elif mode == "PRINT_TREE":
+        for i in range(0, 10):
+            ttree, tsent, tlabel = dev_dataset[i]
+            utils.print_tree(ttree, 0)
+            print('_______________')
+        print('break')
+        quit()
+    elif mode == "EXPERIMENT":
+        max_dev = 0
+        max_dev_epoch = 0
+        filename = args.name + '.pth'
+        for epoch in range(args.epochs):
+            train_loss = trainer.train(train_dataset)
+            dev_loss, dev_pred = trainer.test(dev_dataset)
+            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            print('==> Train loss   : %f \t' % train_loss, end="")
+            print('Epoch ', epoch, 'dev percentage ', dev_acc)
+            torch.save(model, args.saved + str(epoch) + '_model_' + filename)
+            torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
+            if dev_acc > max_dev:
+                max_dev = dev_acc
+                max_dev_epoch = epoch
+            gc.collect()
+        print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
+        print('eva on test set ')
+        model = torch.load(args.saved + str(max_dev_epoch) + '_model_' + filename)
+        embedding_model = torch.load(args.saved + str(max_dev_epoch) + '_embedding_' + filename)
+        trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
+        test_loss, test_pred = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
-        print('==> Train loss   : %f \t' % train_loss, end="")
-        print('Epoch ', epoch, 'train percentage ', train_acc)
-        print('Epoch ',epoch, 'dev percentage ',dev_acc )
-        print('Epoch ', epoch, 'test percentage ', test_acc)
+        print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
+        print('____________________' + str(args.name) + '___________________')
+    else:
+        for epoch in range(args.epochs):
+            train_loss = trainer.train(train_dataset)
+            train_loss, train_pred = trainer.test(train_dataset)
+            dev_loss, dev_pred = trainer.test(dev_dataset)
+            test_loss, test_pred = trainer.test(test_dataset)
 
+            train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
+            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+            print('==> Train loss   : %f \t' % train_loss, end="")
+            print('Epoch ', epoch, 'train percentage ', train_acc)
+            print('Epoch ', epoch, 'dev percentage ', dev_acc)
+            print('Epoch ', epoch, 'test percentage ', test_acc)
 
 
 if __name__ == "__main__":
