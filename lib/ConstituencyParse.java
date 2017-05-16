@@ -77,31 +77,31 @@ public class ConstituencyParse {
     return tree;
   }
   
-    public String[] constTreePOSTAG(Tree tree) {
-    Tree binarized = binarizer.transformTree(tree);
-    Tree collapsedUnary = transformer.transformTree(binarized);
-    Trees.convertToCoreLabels(collapsedUnary);
-    collapsedUnary.indexSpans();
-    List<Tree> leaves = collapsedUnary.getLeaves();
-    int size = collapsedUnary.size() - leaves.size();
+public String[] constTreePOSTAG(Tree tree) {
+    // Tree binarized = binarizer.transformTree(tree);
+    // Tree collapsedUnary = transformer.transformTree(tree);
+    Trees.convertToCoreLabels(tree);
+    tree.indexSpans();
+    List<Tree> leaves = tree.getLeaves();
+    int size = tree.size() - leaves.size();
     String[] tags = new String[size];
     HashMap<Integer, Integer> index = new HashMap<Integer, Integer>();
 
     int idx = leaves.size();
     int leafIdx = 0;
     for (Tree leaf : leaves) {
-      Tree cur = leaf.parent(collapsedUnary); // go to preterminal
+      Tree cur = leaf.parent(tree); // go to preterminal
       int curIdx = leafIdx++;
       boolean done = false;
       while (!done) {
-        Tree parent = cur.parent(collapsedUnary);
+        Tree parent = cur.parent(tree);
         if (parent == null) {
           tags[curIdx] = cur.label().toString();
           break;
         }
 
         int parentIdx;
-        int parentNumber = parent.nodeNumber(collapsedUnary);
+        int parentNumber = parent.nodeNumber(tree);
         if (!index.containsKey(parentNumber)) {
           parentIdx = idx++;
           index.put(parentNumber, parentIdx);
@@ -120,30 +120,30 @@ public class ConstituencyParse {
   }
 
   public int[] constTreeParents(Tree tree) {
-    Tree binarized = binarizer.transformTree(tree);
-    Tree collapsedUnary = transformer.transformTree(binarized);
-    Trees.convertToCoreLabels(collapsedUnary);
-    collapsedUnary.indexSpans();
-    List<Tree> leaves = collapsedUnary.getLeaves();
-    int size = collapsedUnary.size() - leaves.size();
+    // Tree binarized = binarizer.transformTree(tree); // TODO: what is this
+    // Tree collapsedUnary = transformer.transformTree(binarized);
+    Trees.convertToCoreLabels(tree);
+    tree.indexSpans();
+    List<Tree> leaves = tree.getLeaves();
+    int size = tree.size() - leaves.size();
     int[] parents = new int[size];
     HashMap<Integer, Integer> index = new HashMap<Integer, Integer>();
 
     int idx = leaves.size();
     int leafIdx = 0;
     for (Tree leaf : leaves) {
-      Tree cur = leaf.parent(collapsedUnary); // go to preterminal
+      Tree cur = leaf.parent(tree); // go to preterminal
       int curIdx = leafIdx++;
       boolean done = false;
       while (!done) {
-        Tree parent = cur.parent(collapsedUnary);
+        Tree parent = cur.parent(tree);
         if (parent == null) {
           parents[curIdx] = 0;
           break;
         }
 
         int parentIdx;
-        int parentNumber = parent.nodeNumber(collapsedUnary);
+        int parentNumber = parent.nodeNumber(tree);
         if (!index.containsKey(parentNumber)) {
           parentIdx = idx++;
           index.put(parentNumber, parentIdx);

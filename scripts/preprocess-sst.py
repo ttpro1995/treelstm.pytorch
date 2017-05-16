@@ -12,15 +12,12 @@ import glob
 
 class ConstTree(object):
     def __init__(self):
-        self.left = None
-        self.right = None
+        self.children = []
 
     def size(self):
         self.size = 1
-        if self.left is not None:
-            self.size += self.left.size()
-        if self.right is not None:
-            self.size += self.right.size()
+        for child in self.children:
+            self.size += child.size()
         return self.size
 
     def set_spans(self):
@@ -28,19 +25,50 @@ class ConstTree(object):
             self.span = self.word
             return self.span
 
-        self.span = self.left.set_spans()
-        if self.right is not None:
-            self.span += ' ' + self.right.set_spans()
+        self.span = self.children[0].set_spans()
+        for i in range(1, len(self.children)):
+            self.span += ' ' + self.children[i].get_spans()
         return self.span
 
     def get_labels(self, spans, labels, dictionary):
         if self.span in dictionary:
             spans[self.idx] = self.span
             labels[self.idx] = dictionary[self.span]
-        if self.left is not None:
-            self.left.get_labels(spans, labels, dictionary)
-        if self.right is not None:
-            self.right.get_labels(spans, labels, dictionary)
+        for child in self.children:
+            child.get_labels(spans, labels, dictionary)
+
+
+# class ConstTree(object):
+#     def __init__(self):
+#         self.left = None
+#         self.right = None
+#
+#     def size(self):
+#         self.size = 1
+#         if self.left is not None:
+#             self.size += self.left.size()
+#         if self.right is not None:
+#             self.size += self.right.size()
+#         return self.size
+#
+#     def set_spans(self):
+#         if self.word is not None:
+#             self.span = self.word
+#             return self.span
+#
+#         self.span = self.left.set_spans()
+#         if self.right is not None:
+#             self.span += ' ' + self.right.set_spans()
+#         return self.span
+#
+#     def get_labels(self, spans, labels, dictionary):
+#         if self.span in dictionary:
+#             spans[self.idx] = self.span
+#             labels[self.idx] = dictionary[self.span]
+#         if self.left is not None:
+#             self.left.get_labels(spans, labels, dictionary)
+#         if self.right is not None:
+#             self.right.get_labels(spans, labels, dictionary)
 
 class DepTree(object):
     def __init__(self):
@@ -72,21 +100,26 @@ class DepTree(object):
             c.get_labels(spans, labels, dictionary)
 
 def load_trees(dirpath):
-    const_trees, dep_trees, toks = [], [], []
+    const_trees,c_const_trees, dep_trees, toks = [], [], []
     with open(os.path.join(dirpath, 'parents.txt')) as parentsfile, \
-         open(os.path.join(dirpath, 'dparents.txt')) as dparentsfile, \
-         open(os.path.join(dirpath, 'sents.txt')) as toksfile:
+        open(os.path.join(dirpath, 'cparents.txt')) as cparentsfile, \
+        open(os.path.join(dirpath, 'dparents.txt')) as dparentsfile, \
+        open(os.path.join(dirpath, 'sents.txt')) as toksfile:
         parents, dparents = [], []
+        cparents = []
         for line in parentsfile:
             parents.append(map(int, line.split()))
+        for line in cparentsfile:
+            cparents.append(map(int, line.split()))
         for line in dparentsfile:
             dparents.append(map(int, line.split()))
         for line in toksfile:
             toks.append(line.strip().split())
         for i in xrange(len(toks)):
             const_trees.append(load_constituency_tree(parents[i], toks[i]))
+            c_const_trees.append(load_constituency_tree(cparents[i], toks[i]))
             dep_trees.append(load_dependency_tree(dparents[i]))
-    return const_trees, dep_trees, toks
+    return const_trees, c_const_trees, dep_trees, toks
 
 def load_constituency_tree(parents, words):
     trees = []
@@ -280,9 +313,10 @@ def get_labels(tree, dictionary):
 def write_labels(dirpath, dictionary):
     print('Writing labels for trees in ' + dirpath)
     with open(os.path.join(dirpath, 'labels.txt'), 'w') as labels, \
-         open(os.path.join(dirpath, 'dlabels.txt'), 'w') as dlabels:
+            open(os.path.join(dirpath, 'clabels.txt'), 'w') as clabels, \
+            open(os.path.join(dirpath, 'dlabels.txt'), 'w') as dlabels:
         # load constituency and dependency trees
-        const_trees, dep_trees, toks = load_trees(dirpath)
+        const_trees, c_const_trees, dep_trees, toks = load_trees(dirpath)
 
         # write span labels
         for i in xrange(len(const_trees)):
@@ -296,6 +330,13 @@ def write_labels(dirpath, dictionary):
                 l.append(None)
             const_trees[i].get_labels(s, l, dictionary)
             labels.write(' '.join(map(str, l)) + '\n')
+
+            cs, cl = [], []
+            for j in xrange(c_const_trees[i].size()):
+                cs.append(None)
+                cl.append(None)
+            c_const_trees[i].get_labels(cs, cl, dictionary)
+            clabels.write(' '.join(map(str, cl)) + '\n')
 
             # dep tree labels
             dep_trees[i].span = const_trees[i].span
