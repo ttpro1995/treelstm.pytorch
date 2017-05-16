@@ -26,13 +26,15 @@ class BinaryTreeLeafModule(nn.Module):
         self.mem_dim = mem_dim
 
         self.cx = nn.Linear(self.in_dim, self.mem_dim)
-
+        self.ox = nn.Linear(self.in_dim, self.mem_dim)
         if self.cudaFlag:
             self.cx = self.cx.cuda()
+            self.ox = self.ox.cuda()
 
     def forward(self, input):
         c = self.cx(input)
-        h = F.tanh(c)
+        o = F.sigmoid(self.ox(input))
+        h = o * F.tanh(c)
         return c, h
 
 class BinaryTreeComposer(nn.Module):

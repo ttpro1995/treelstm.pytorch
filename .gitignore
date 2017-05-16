@@ -11,3 +11,5 @@ job.py
 *.pyc
 
 \.idea/
+
+*.pth

@@ -35,7 +35,11 @@ from trainer import SentimentTrainer
 def main():
     global args
     args = parse_args(type=1)
-    args.input_dim, args.mem_dim = 300, 168
+    args.input_dim= 300
+    if args.model_name == 'dependency':
+        args.mem_dim = 168
+    elif args.model_name == 'constituency':
+        args.mem_dim = 150
     if args.fine_grain:
         args.num_classes = 5 # 0 1 2 3 4
     else:
