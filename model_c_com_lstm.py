@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import config
 from torch.autograd import Variable as Var
 import utils
-
+from model import SentimentModule
 
 def new_gate(mode, word_dim, tag_dim, mem_dim):
     if mode == 'full':
@@ -26,18 +26,23 @@ def new_gate(mode, word_dim, tag_dim, mem_dim):
         Wtp = nn.Linear(tag_dim, mem_dim)
         Uh = nn.Linear(mem_dim, mem_dim)  # h_prev from left
         return We, Wt, Wtp, Uh
+    elif mode == 'simpleleaf':
+        We = nn.Linear(word_dim, mem_dim)  # embedding
+        Wt = nn.Linear(tag_dim, mem_dim)  # child tag
+        Wtp = nn.Linear(tag_dim, mem_dim)
+        return We, Wt, Wtp
+
 
 class LeafModule(nn.Module):
     """
     Leaf module have e, but do not have q, k
     """
-    def __init__(self, cuda, word_dim, tag_dim, mem_dim, criterion):
+    def __init__(self, cuda, word_dim, tag_dim, mem_dim):
         super(LeafModule, self).__init__()
         self.cudaFlag = cuda
         self.word_dim = word_dim
         self.tag_dim = tag_dim
         self.mem_dim = mem_dim
-        self.criterion = criterion
 
         self.ie, self.it, self.itp, self.ih = new_gate('leaf', word_dim, tag_dim, mem_dim)
         self.oe, self.ot, self.otp, self.oh = new_gate('leaf', word_dim, tag_dim, mem_dim)
@@ -74,17 +79,63 @@ class LeafModule(nn.Module):
         h = o * F.tanh(c)
         return h, c
 
+class SimpleLeafModule(nn.Module):
+    """
+    Leaf module have e, but do not have q, k
+    """
+    def __init__(self, cuda, word_dim, tag_dim, mem_dim):
+        super(LeafModule, self).__init__()
+        self.cudaFlag = cuda
+        self.word_dim = word_dim
+        self.tag_dim = tag_dim
+        self.mem_dim = mem_dim
+
+        self.ie, self.it, self.itp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+        self.oe, self.ot, self.otp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+        self.fle, self.flt, self.fltp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+        self.ue, self.ut, self.utp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+
+        if self.cudaFlag:
+            self.ie = self.ie.cuda()
+            self.it = self.it.cuda()
+            self.ih = self.ih.cuda()
+            self.itp = self.itp.cuda()
+
+            self.oe = self.oe.cuda()
+            self.ot = self.ot.cuda()
+            self.oh = self.oh.cuda()
+            self.otp = self.otp.cuda()
+
+            self.fle = self.fle.cuda()
+            self.flt = self.flt.cuda()
+            self.flh = self.flh.cuda()
+            self.fltp = self.fltp.cuda()
+
+            self.ue = self.ue.cuda()
+            self.ut = self.ut.cuda()
+            self.uh = self.uh.cuda()
+            self.utp = self.utp.cuda()
+
+    def forward(self, e, tag, tag_parent, h_prev, c_prev):
+        i = F.sigmoid(self.ie(e) + self.it(tag) + self.itp(tag_parent) +self.ih(h_prev))
+        o = F.sigmoid(self.oe(e) + self.ot(tag) + self.otp(tag_parent) + self.oh(h_prev))
+        f_left = F.sigmoid(self.fle(e) + self.flt(tag) + self.fltp(tag_parent) + self.flh(h_prev))
+        u = F.tanh(self.ue(e) + self.ut(tag) + self.utp(tag_parent) +  self.uh(h_prev))
+        c = i*u + f_left*c_prev
+        h = o * F.tanh(c)
+        return h, c
+
+
 class NodeModule(nn.Module):
     """
     have q, k but not e
     """
-    def __init__(self, cuda, word_dim, tag_dim, mem_dim, criterion):
+    def __init__(self, cuda, word_dim, tag_dim, mem_dim):
         super(NodeModule, self).__init__()
         self.cudaFlag = cuda
         self.word_dim = word_dim
         self.tag_dim = tag_dim
         self.mem_dim = mem_dim
-        self.criterion = criterion
 
         self.it, self.itp, self.ih, self.ik = new_gate('node', word_dim, tag_dim, mem_dim)
         self.ot, self.otp, self.oh, self.ok = new_gate('node', word_dim, tag_dim, mem_dim)
@@ -122,22 +173,24 @@ class NodeModule(nn.Module):
         i = F.sigmoid(self.it(tag) + self.itp(tag_parent) +self.ih(h_prev) + self.ik(k))
         o = F.sigmoid(self.ot(tag) + self.otp(tag_parent) + self.oh(h_prev) + self.ok(k))
         f_left = F.sigmoid(self.flt(tag) + self.fltp(tag_parent) + self.flh(h_prev) + self.flk(k))
+        f_down = F.sigmoid(self.fdt(tag) + self.fdtp(tag_parent) + self.fdh(h_prev) + self.fdk(k))
         u = F.tanh(self.ut(tag) + self.utp(tag_parent) +  self.uh(h_prev))
-        c = i*u + f_left*c_prev
+        c = i*u + f_down*q + f_left*c_prev
         h = o * F.tanh(c)
         return h, c
 
 
-class BinaryTreeLSTM(nn.Module):
-    def __init__(self, cuda, in_dim, mem_dim, criterion):
-        super(BinaryTreeLSTM, self).__init__()
+class ConstituencyTreeLSTM(nn.Module):
+    def __init__(self, cuda, word_dim, tag_dim, mem_dim, criterion):
+        super(ConstituencyTreeLSTM, self).__init__()
         self.cudaFlag = cuda
-        self.in_dim = in_dim
+        self.word_dim = word_dim
+        self.tag_dim = tag_dim
         self.mem_dim = mem_dim
         self.criterion = criterion
 
-        self.leaf_module = LeafModule(cuda,in_dim, mem_dim)
-        self.node_module = BinaryTreeComposer(cuda, in_dim, mem_dim)
+        self.leaf_module = LeafModule(cuda, word_dim, tag_dim, mem_dim)
+        self.node_module = NodeModule(cuda, word_dim, tag_dim, mem_dim)
         self.output_module = None
 
     def set_output_module(self, output_module):
@@ -151,7 +204,7 @@ class BinaryTreeLSTM(nn.Module):
         :return: 1d tensor
         """
         params = []
-        for m in [self.ix, self.ih, self.fx, self.fh, self.ox, self.oh, self.ux, self.uh]:
+        for m in [self.leaf_module, self.node_module]:
             # we do not get param of output module
             l = list(m.parameters())
             params.extend(l)
@@ -160,7 +213,7 @@ class BinaryTreeLSTM(nn.Module):
         params = F.torch.cat(one_dim)
         return params
 
-    def forward(self, tree, embs, training = False):
+    def forward(self, tree, embs, tags, training = False):
         # add singleton dimension for future call to node_forward
         # embs = F.torch.unsqueeze(self.emb(inputs),1)
 
@@ -170,16 +223,15 @@ class BinaryTreeLSTM(nn.Module):
 
         if tree.num_children == 0:
             # leaf case
-            tree.state = self.leaf_module.forward(embs[tree.idx-1])
+            tree.state = self.leaf_module.forward(e)
         else:
             for idx in xrange(tree.num_children):
                 _, child_loss = self.forward(tree.children[idx], embs, training)
                 loss = loss + child_loss
-            lc, lh, rc, rh = self.get_child_state(tree)
-            tree.state = self.composer.forward(lc, lh, rc, rh)
 
-        if self.output_module != None:
-            output = self.output_module.forward(tree.state[1], training)
+
+        if self.output_module != None and tree.num_children != 0:
+            output = self.output_module.forward(tree.state[0], training)
             tree.output = output
             if training and tree.gold_label != None:
                 target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
@@ -195,3 +247,15 @@ class BinaryTreeLSTM(nn.Module):
         return lc, lh, rc, rh
 
 ###################################################################
+class TreeLSTMSentiment(nn.Module):
+    def __init__(self, cuda, word_dim, tag_dim, mem_dim, num_classes, criterion):
+        super(TreeLSTMSentiment, self).__init__()
+        self.cudaFlag = cuda
+        self.tree_module = ConstituencyTreeLSTM(cuda, word_dim, tag_dim, mem_dim, criterion)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.tree_module.set_output_module(self.output_module)
+
+    def forward(self, tree, embs, tags, training = False):
+        tree_state, loss = self.tree_module(tree, embs, tags, training)
+        output = tree.output
+        return output, loss
