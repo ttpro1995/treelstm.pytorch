@@ -25,8 +25,9 @@ class FasterGRUTree(nn.Module):
         self.criterion = criterion
 
         self.leaf_module = nn.GRUCell(word_dim+tag_dim, mem_dim)
-        self.node_module = nn.GRUCell(word_dim+tag_dim, mem_dim)
-        self.children_module = nn.GRU(word_dim+tag_dim+tag_dim)
+        self.node_module = nn.GRUCell(1, mem_dim)
+        self.children_module_gru = nn.GRU(mem_dim + 2*tag_dim, mem_dim)
+        self.children_module = nn.GRUCell(mem_dim + 2 * tag_dim, mem_dim)
         self.output_module = None
 
     def set_output_module(self, output_module):
@@ -58,8 +59,8 @@ class FasterGRUTree(nn.Module):
             loss = loss.cuda()
 
         if tree.num_children == 0:
-            x = torch.cat([embs[tree.idx - 1], tags[tree.idx - 1]])
-            h = Var(torch.zeros(1, self.mem_dim), require_grad = False)
+            x = torch.cat([embs[tree.idx - 1], tags[tree.idx - 1]], 1)
+            h = Var(torch.zeros(1, self.mem_dim))
             if self.cudaFlag:
                 h = h.cuda()
             tree.state = self.leaf_module.forward(x, h)
@@ -69,15 +70,31 @@ class FasterGRUTree(nn.Module):
                 loss = loss + child_loss
 
             x = self.get_child_state(tree, tags)
-            _, h_final = self.children_module.forward(x)
-            x_zeros = Var(torch.zeros(1, self.word_dim + 2*self.tag_dim), require_grad = False)
+
+            # _, h_final = self.children_module.forward(x)
+            h_final = Var(torch.zeros(1, self.mem_dim))
+            if self.cudaFlag:
+                h_final = h_final.cuda()
+
+            for i in xrange(tree.num_children):
+                h_final = self.children_module.forward(x[i], h_final)
+
+
+            # _, h_final = self.children_module_gru.forward(x)
+            # h_final = h_final.squeeze(1)
+
+
+            # h_final = h_final.squeeze(1)
+            x_zeros = Var(torch.zeros(1, 1))
+            if self.cudaFlag:
+                x_zeros = x_zeros.cuda()
             tree.state = self.node_module.forward(x_zeros, h_final)
 
 
 
 
         if self.output_module != None and tree.num_children != 0:
-            output = self.output_module.forward(tree.state[0], training)
+            output = self.output_module.forward(tree.state, training)
             tree.output = output
             if training and tree.gold_label != None:
                 target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
