@@ -254,7 +254,7 @@ class SSTConstituencyDataset(data.Dataset):
         temp_sentences = self.read_sentences(os.path.join(path,'sents.toks'))
         temp_tags = self.read_tags(os.path.join(path,'ctags.txt'))
 
-        temp_trees = self.read_trees(os.path.join(path,'cparents.txt'), os.path.join(path,'labels.txt'), temp_tags)
+        temp_trees = self.read_trees(os.path.join(path,'cparents.txt'), os.path.join(path,'clabels.txt'), temp_tags)
 
         # self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
         self.labels = []
@@ -373,6 +373,7 @@ class SSTConstituencyDataset(data.Dataset):
                     tree.idx = idx
                     tree.gold_label = labels[idx-1] # add node label
                     tree.tags = tags[idx-1]
+                    tree.tag = tags[idx-1]
                     #if trees[parent-1] is not None:
                     if parent in trees.keys():
                         trees[parent].add_child(tree)

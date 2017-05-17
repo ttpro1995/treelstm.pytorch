@@ -1,5 +1,5 @@
 from __future__ import print_function
-
+import CONST
 import os, time, argparse
 from tqdm import tqdm
 import numpy
@@ -16,8 +16,7 @@ from meowlogtool import log_util
 # IMPORT CONSTANTS
 import Constants
 # NEURAL NETWORK MODULES/LAYERS
-from model_gru import *
-from model import *
+from model_c_com_lstm import TreeLSTMSentiment
 # DATA HANDLING CLASSES
 from tree import Tree
 from vocab import Vocab
@@ -33,7 +32,7 @@ from config import parse_args, print_config
 from trainer import SentimentTrainer
 
 from embedding_model import EmbeddingModel
-
+from faster_gru import TreeGRUSentiment
 import gc
 
 # MAIN BLOCK
@@ -41,6 +40,7 @@ def main():
     global args
     args = parse_args(type=Constants.TYPE_constituency)
     print_config(args)
+    CONST.show_const()
 
     args.word_dim= args.input_dim
     if args.fine_grain:
@@ -107,11 +107,13 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     # initialize model, criterion/loss_function, optimizer
-    model = TreeGRUSentiment(
-                args.cuda, args.input_dim,
-                args.tag_dim, args.rel_dim,
-        args.mem_dim, args.at_hid_dim ,3, criterion
-            )
+    # model = TreeLSTMSentiment(
+    #             args.cuda, args.input_dim,
+    #             args.tag_dim,
+    #     args.mem_dim, 3, criterion
+    #         )
+
+    model = TreeGRUSentiment(args.cuda, args.input_dim, args.tag_dim, args.mem_dim, 3, criterion)
 
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
     #                             padding_idx=Constants.PAD)
@@ -168,7 +170,7 @@ def main():
         tag_emb = torch.load(tag_emb_file)
     else:
         # load glove embeddings and vocab
-        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove, 'tagglove'))
+        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove, 'ctagglove'))
         print('==> TAG GLOVE vocabulary size: %d ' % glove_vocab.size())
         tag_emb = torch.zeros(tagvocab.size(), glove_emb.size(1))
         # zero out the embeddings for padding and other special words if they are absent in vocab
@@ -212,7 +214,7 @@ def main():
     # create trainer object for training and testing
     trainer  = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
 
-    mode = 'PRINT_TREE'
+    mode = 'DEBUG'
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             dev_loss = trainer.train(dev_dataset)
@@ -222,11 +224,15 @@ def main():
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
             print('==> Dev loss   : %f \t' % dev_loss, end="")
-            print('Epoch ', epoch, 'dev percentage ', dev_acc)
+            print('Epoch ', epoch + 1, 'dev percentage ', dev_acc, 'test percentage ', test_acc)
     elif mode == "PRINT_TREE":
         for i in range(0, 10):
             ttree, tsent, ttag, trel ,tlabel = dev_dataset[i]
+            se = vocab.convertToLabels(tsent, Constants.UNK)
+            sentences = ' '.join(se)
+            print (sentences)
             utils.print_tree(vocab, tagvocab, tsent, ttree, 0)
+
             print ('_______________')
         print ('break')
         quit()
@@ -236,9 +242,12 @@ def main():
         filename = args.name+'.pth'
         for epoch in range(args.epochs):
             train_loss             = trainer.train(train_dataset)
+            train_loss, train_pred = trainer.test(train_dataset)
             dev_loss, dev_pred     = trainer.test(dev_dataset)
+            train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             print('==> Train loss   : %f \t' % train_loss, end="")
+            print ('train percentage ' + str(train_acc))
             print('Epoch ',epoch, 'dev percentage ',dev_acc)
             torch.save(model, args.saved + str(epoch)+'_model_'+filename)
             torch.save(embedding_model, args.saved + str(epoch)+'_embedding_'+filename)
@@ -274,7 +283,7 @@ def main():
 
 if __name__ == "__main__":
     # log to console and file
-    args = parse_args(type=1)
+    args = parse_args(type=Constants.TYPE_constituency)
     logger1 = log_util.create_logger(args.name, print_console=True)
     logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)

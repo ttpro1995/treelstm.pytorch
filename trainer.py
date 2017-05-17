@@ -4,12 +4,28 @@ from torch.autograd import Variable as Var
 from utils import map_label_to_target, map_label_to_target_sentiment
 import torch.nn.functional as F
 import gc
+import config
+import os.path
+
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
+
+
+def showPlot(points, args, epoch, path = './plot/'):
+    fig, ax = plt.subplots()
+    # this locator puts ticks at regular intervals
+    loc = ticker.MultipleLocator(base=0.2)
+    ax.yaxis.set_major_locator(loc)
+    plt.plot(points)
+    plt.savefig(os.path.join(path, args.name+'_'+str(epoch+1)+'.png'))
+
 
 class SentimentTrainer(object):
     """
     For Sentiment module
     """
-    def __init__(self, args, model, embedding_model, criterion, optimizer):
+    def __init__(self, args, model, embedding_model, criterion, optimizer, plot_every = 25):
         super(SentimentTrainer, self).__init__()
         self.args       = args
         self.model      = model
@@ -17,6 +33,7 @@ class SentimentTrainer(object):
         self.optimizer  = optimizer
         self.epoch      = 0
         self.embedding_model = embedding_model
+        self.plot_every = plot_every
 
 
     # helper function for training
@@ -27,6 +44,9 @@ class SentimentTrainer(object):
         self.optimizer.zero_grad()
 
         loss, k = 0.0, 0
+        plot_loss_total = 0
+        plot_count = 0
+        plot_losses = []
         indices = torch.randperm(len(dataset))
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             tree, sent, tag, rel, label = dataset[indices[idx]]
@@ -37,16 +57,25 @@ class SentimentTrainer(object):
                 input = input.cuda()
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
-            sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
+            sent_emb, tag_emb, _ = self.embedding_model(input, tag_input, rel_input)
+            output, err = self.model.forward(tree, sent_emb, tag_emb, training = True)
             #params = self.model.get_tree_parameters()
             #params_norm = params.norm()
             err = err/self.args.batchsize #+ 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
+            plot_loss_total += err.data[0]
             err.backward()
             k += 1
+            plot_count +=1
             #params = None
             #params_norm = None
+
+            if self.plot_every and plot_count == self.plot_every:
+                plot_loss_avg = plot_loss_total / self.plot_every
+                plot_losses.append(plot_loss_avg)
+                plot_loss_total = 0
+                plot_count = 0
+
             if k==self.args.batchsize:
                 if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
                     for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
@@ -65,6 +94,7 @@ class SentimentTrainer(object):
                 self.optimizer.zero_grad()
                 k = 0
         self.epoch += 1
+        showPlot(plot_losses, self.args, self.epoch)
         gc.collect()
         return loss/len(dataset)
 
