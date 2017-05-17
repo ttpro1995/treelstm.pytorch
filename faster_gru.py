@@ -56,6 +56,17 @@ class FasterGRUTree(nn.Module):
         params = F.torch.cat(one_dim)
         return params
 
+    def getGrad(self):
+        params = []
+        for m in [self.leaf_module, self.node_module, self.children_module]:
+            # we do not get param of output module
+            l = list(m.parameters())
+            params.extend(l)
+
+        one_dim = [p.grad.view(p.grad.numel()) for p in params]
+        grad = F.torch.cat(one_dim)
+        return grad
+
     def forward(self, tree, embs, tags, training = False):
         # add singleton dimension for future call to node_forward
         # embs = F.torch.unsqueeze(self.emb(inputs),1)

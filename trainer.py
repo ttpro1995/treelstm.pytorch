@@ -12,13 +12,13 @@ import matplotlib.ticker as ticker
 import numpy as np
 
 
-def showPlot(points, args, epoch, path = './plot/'):
+def showPlot(points, args, epoch, path = './plot/', plot_name = 'loss'):
     fig, ax = plt.subplots()
     # this locator puts ticks at regular intervals
     loc = ticker.MultipleLocator(base=0.2)
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
-    plt.savefig(os.path.join(path, args.name+'_'+str(epoch+1)+'.png'))
+    plt.savefig(os.path.join(path, args.name+'_'+plot_name+'_'+str(epoch+1)+'.png'))
 
 
 class SentimentTrainer(object):
@@ -43,10 +43,16 @@ class SentimentTrainer(object):
         self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
 
-        loss, k = 0.0, 0
+
+        # plot
         plot_loss_total = 0
         plot_count = 0
         plot_losses = []
+
+        plot_tree_grad = []
+        plot_tree_grad_param = []
+
+        loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             tree, sent, tag, rel, label = dataset[indices[idx]]
@@ -77,6 +83,14 @@ class SentimentTrainer(object):
                 plot_count = 0
 
             if k==self.args.batchsize:
+
+                tree_model_param_norm = self.model.tree_module.getParameters().norm().data[0]
+                tree_model_grad_norm = self.model.tree_module.getGrad().norm().data[0]
+                tree_model_grad_param = tree_model_grad_norm/tree_model_param_norm
+
+                plot_tree_grad.append(tree_model_grad_norm)
+                plot_tree_grad_param.append(tree_model_grad_param)
+
                 if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
                     for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
                         f.data.sub_(f.grad.data * self.args.tag_emblr)
@@ -95,6 +109,8 @@ class SentimentTrainer(object):
                 k = 0
         self.epoch += 1
         showPlot(plot_losses, self.args, self.epoch)
+        showPlot(plot_tree_grad, self.args, self.epoch, plot_name='grad')
+        showPlot(plot_tree_grad_param, self.args, self.epoch, plot_name='gradparam')
         gc.collect()
         return loss/len(dataset)
 
