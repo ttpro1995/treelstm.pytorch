@@ -269,7 +269,7 @@ public String[] constTreePOSTAG(Tree tree) {
     Scanner stdin = new Scanner(System.in);
     int count = 0;
     long start = System.currentTimeMillis();
-    while (stdin.hasNextLine() && count < 5) {
+    while (stdin.hasNextLine()) {
       String line = stdin.nextLine();
       List<HasWord> tokens = processor.sentenceToTokens(line);
 
