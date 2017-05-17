@@ -18,7 +18,7 @@ def showPlot(points, args, epoch, path = './plot/', plot_name = 'loss'):
     loc = ticker.MultipleLocator(base=0.2)
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
-    plt.savefig(os.path.join(path, args.name+'_'+plot_name+'_'+str(epoch+1)+'.png'))
+    plt.savefig(os.path.join(path, args.name+'_'+plot_name+'_'+str(epoch)+'.png'))
 
 
 class SentimentTrainer(object):
