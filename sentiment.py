@@ -214,7 +214,7 @@ def main():
     # create trainer object for training and testing
     trainer  = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
 
-    mode = 'DEBUG'
+    mode = 'EXPERIMENT'
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             dev_loss = trainer.train(dev_dataset)

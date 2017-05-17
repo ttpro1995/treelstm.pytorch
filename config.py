@@ -76,7 +76,7 @@ def parse_args(type=0):
         parser.add_argument('--name', default='default_log',
                             help='log name (default: default_log)')
 
-    elif type == 2:
+    elif type == 2: # Constituency Trees use this one
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analyusis on Constituency Trees')
         parser.add_argument('--data', default='data/sst/',
                             help='path to dataset')
@@ -91,7 +91,7 @@ def parse_args(type=0):
 
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
-        parser.add_argument('--epochs', default=10, type=int,
+        parser.add_argument('--epochs', default=50, type=int,
                             help='number of total epochs to run')
         parser.add_argument('--lr', default=0.05, type=float,
                             metavar='LR', help='initial learning rate')
