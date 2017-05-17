@@ -27,7 +27,7 @@ class ConstTree(object):
 
         self.span = self.children[0].set_spans()
         for i in range(1, len(self.children)):
-            self.span += ' ' + self.children[i].get_spans()
+            self.span += ' ' + self.children[i].set_spans()
         return self.span
 
     def get_labels(self, spans, labels, dictionary):
@@ -100,7 +100,7 @@ class DepTree(object):
             c.get_labels(spans, labels, dictionary)
 
 def load_trees(dirpath):
-    const_trees,c_const_trees, dep_trees, toks = [], [], []
+    const_trees,c_const_trees, dep_trees, toks = [], [], [], []
     with open(os.path.join(dirpath, 'parents.txt')) as parentsfile, \
         open(os.path.join(dirpath, 'cparents.txt')) as cparentsfile, \
         open(os.path.join(dirpath, 'dparents.txt')) as dparentsfile, \
@@ -142,16 +142,18 @@ def load_constituency_tree(parents, words):
                 tree.word, tree.parent, tree.idx = word, parent, idx
                 word = None
                 if prev is not None:
-                    if tree.left is None:
-                        tree.left = prev
-                    else:
-                        tree.right = prev
+                    # if tree.left is None:
+                    #     tree.left = prev
+                    # else:
+                    #     tree.right = prev
+                    tree.children.append(prev)
                 trees[idx] = tree
                 if parent >= 0 and trees[parent] is not None:
-                    if trees[parent].left is None:
-                        trees[parent].left = tree
-                    else:
-                        trees[parent].right = tree
+                    # if trees[parent].left is None:
+                    #     trees[parent].left = tree
+                    # else:
+                    #     trees[parent].right = tree
+                    trees[parent].children.append(tree)
                     break
                 elif parent == -1:
                     root = tree
@@ -322,8 +324,9 @@ def write_labels(dirpath, dictionary):
         for i in xrange(len(const_trees)):
             const_trees[i].set_spans()
             dep_trees[i].set_spans(toks[i])
+            c_const_trees[i].set_spans()
 
-            # const tree labels
+            # binary const tree labels
             s, l = [], []
             for j in xrange(const_trees[i].size()):
                 s.append(None)
@@ -331,10 +334,11 @@ def write_labels(dirpath, dictionary):
             const_trees[i].get_labels(s, l, dictionary)
             labels.write(' '.join(map(str, l)) + '\n')
 
+            # non binary const tree labels
             cs, cl = [], []
             for j in xrange(c_const_trees[i].size()):
                 cs.append(None)
-                cl.append(None)
+                cl.append('#')
             c_const_trees[i].get_labels(cs, cl, dictionary)
             clabels.write(' '.join(map(str, cl)) + '\n')
 
@@ -388,22 +392,22 @@ if __name__ == '__main__':
     test_dir = os.path.join(sst_dir, 'test')
     make_dirs([train_dir, dev_dir, test_dir])
 
-    # produce train/dev/test splits
-    split(sst_dir, train_dir, dev_dir, test_dir)
-    sent_paths = glob.glob(os.path.join(sst_dir, '*/sents.txt'))
-
-    # produce dependency parses
-    classpath = ':'.join([
-        lib_dir,
-        os.path.join(lib_dir, 'stanford-parser/stanford-parser.jar'),
-        os.path.join(lib_dir, 'stanford-parser/stanford-parser-3.5.1-models.jar')])
-    for filepath in sent_paths:
-        dependency_parse(filepath, cp=classpath, tokenize=False)
-        constituency_parse(filepath, cp=classpath, tokenize=False)
-
-    # get vocabulary
-    build_vocab(sent_paths, os.path.join(sst_dir, 'vocab.txt'))
-    build_vocab(sent_paths, os.path.join(sst_dir, 'vocab-cased.txt'), lowercase=False)
+    # # produce train/dev/test splits
+    # split(sst_dir, train_dir, dev_dir, test_dir)
+    # sent_paths = glob.glob(os.path.join(sst_dir, '*/sents.txt'))
+    #
+    # # produce dependency parses
+    # classpath = ':'.join([
+    #     lib_dir,
+    #     os.path.join(lib_dir, 'stanford-parser/stanford-parser.jar'),
+    #     os.path.join(lib_dir, 'stanford-parser/stanford-parser-3.5.1-models.jar')])
+    # for filepath in sent_paths:
+    #     dependency_parse(filepath, cp=classpath, tokenize=False)
+    #     constituency_parse(filepath, cp=classpath, tokenize=False)
+    #
+    # # get vocabulary
+    # build_vocab(sent_paths, os.path.join(sst_dir, 'vocab.txt'))
+    # build_vocab(sent_paths, os.path.join(sst_dir, 'vocab-cased.txt'), lowercase=False)
 
     # write sentiment labels for nodes in trees
     dictionary = load_dictionary(sst_dir)

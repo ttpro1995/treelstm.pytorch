@@ -76,14 +76,15 @@ public class ConstituencyParse {
     Tree tree = parser.apply(tokens);
     return tree;
   }
-  
+  // cur.label().toString();
 public String[] constTreePOSTAG(Tree tree) {
-    // Tree binarized = binarizer.transformTree(tree);
-    // Tree collapsedUnary = transformer.transformTree(tree);
+    // Tree binarized = binarizer.transformTree(tree); // TODO: what is this
+    // Tree collapsedUnary = transformer.transformTree(binarized);
     Trees.convertToCoreLabels(tree);
     tree.indexSpans();
     List<Tree> leaves = tree.getLeaves();
     int size = tree.size() - leaves.size();
+    int[] parents = new int[size];
     String[] tags = new String[size];
     HashMap<Integer, Integer> index = new HashMap<Integer, Integer>();
 
@@ -96,6 +97,7 @@ public String[] constTreePOSTAG(Tree tree) {
       while (!done) {
         Tree parent = cur.parent(tree);
         if (parent == null) {
+          parents[curIdx] = 0;
           tags[curIdx] = cur.label().toString();
           break;
         }
@@ -110,7 +112,8 @@ public String[] constTreePOSTAG(Tree tree) {
           done = true;
         }
 
-        tags[curIdx] = parent.label().toString();
+        parents[curIdx] = parentIdx + 1;
+        tags[curIdx] = cur.label().toString();
         cur = parent;
         curIdx = parentIdx;
       }
@@ -217,7 +220,7 @@ public String[] constTreePOSTAG(Tree tree) {
     sb.append('\n');
     parentWriter.write(sb.toString());
   }
-  
+
   public void printTags(String[] tags) throws IOException {
     StringBuilder sb = new StringBuilder();
     int size = tags.length;
@@ -256,30 +259,30 @@ public String[] constTreePOSTAG(Tree tree) {
     if (props.containsKey("deps")) {
       deps = true;
     }
-    
+
     String tokPath = props.containsKey("tokpath") ? props.getProperty("tokpath") : null;
     String parentPath = props.getProperty("parentpath");
     String tagPath = props.getProperty("tagpath");
-    
+
     ConstituencyParse processor = new ConstituencyParse(tokPath, parentPath, tagPath, tokenize);
 
     Scanner stdin = new Scanner(System.in);
     int count = 0;
     long start = System.currentTimeMillis();
-    while (stdin.hasNextLine()) {
+    while (stdin.hasNextLine() && count < 5) {
       String line = stdin.nextLine();
       List<HasWord> tokens = processor.sentenceToTokens(line);
-      
+
       //end tagger
-      
+
       Tree parse = processor.parse(tokens);
 
       // produce parent pointer representation
       int[] parents = deps ? processor.depTreeParents(parse, tokens)
                            : processor.constTreeParents(parse);
-      
+
       String[] tags = processor.constTreePOSTAG(parse);
-      
+
       // print
       if (tokPath != null) {
         processor.printTokens(tokens);
@@ -296,7 +299,7 @@ public String[] constTreePOSTAG(Tree tree) {
       sb.append(tags[size - 1]);
       sb.append('\n');
 
-      
+
       count++;
       if (count % 100 == 0) {
         double elapsed = (System.currentTimeMillis() - start) / 1000.0;
