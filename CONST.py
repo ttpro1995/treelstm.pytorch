@@ -4,7 +4,6 @@ vertical_dropout = 0.4
 word_dropout = 0.5
 output_module_dropout = False
 pos_tag_dropout = 0.5
-mode = 'DEBUG'
 place_holder = 2
 def show_const():
     print('horizontal_dropout = ' + str(horizontal_dropout))

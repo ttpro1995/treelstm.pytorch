@@ -122,18 +122,25 @@ def main():
 
     if args.cuda:
         model.cuda(), criterion.cuda()
+
+    scheduler = None
     if args.optim == 'adam':
         optimizer = optim.Adam([
             {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
             # {'params': embedding_model.parameters(), 'lr': args.emblr}
         ])
-        scheduler=None
     elif args.optim == 'adagrad':
         optimizer = optim.Adagrad([
             {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
             # {'params': embedding_model.parameters(), 'lr': args.emblr}
         ])
-        scheduler = None
+    elif args.optim == 'sgd':
+        optimizer = optim.SGD(params=model.parameters(),
+                              lr = args.lr,
+                              momentum=args.sgd_momentum,
+                              dampening=args.sgd_dampening,
+                              weight_decay=args.wd,
+                              nesterov=args.sgd_nesterov)
     elif args.optim == 'adagrad_decade':
         optimizer = optim.Adagrad([
             {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
@@ -148,6 +155,10 @@ def main():
         ])
         scheduler = ReduceLROnPlateau(optimizer, factor=0.1, patience=5,
                                       verbose=1, mode='min', cooldown=0, epsilon=5e-2)
+    if args.scheduler:
+        scheduler = ReduceLROnPlateau(optimizer, factor=args.scheduler_factor, patience=args.scheduler_patience,
+                                  verbose=1, mode='min', cooldown=args.scheduler_cooldown, epsilon=args.scheduler_epsilon)
+
     print('optim ' + args.optim)
     print('learning rate ' + str(args.lr))
     print('embedding learning rate ' + str(args.emblr))
@@ -228,7 +239,7 @@ def main():
     # create trainer object for training and testing
     trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer, scheduler=scheduler)
 
-    mode = CONST.mode
+    mode = args.mode
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             train_loss = trainer.train(dev_dataset)

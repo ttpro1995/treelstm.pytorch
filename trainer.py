@@ -109,8 +109,9 @@ class SentimentTrainer(object):
                 self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
                 k = 0
-        if self.args.optim == "adagrad_decade" or self.args.optim == "adam_decade":
-            self.scheduler.step(loss/len(dataset), self.epoch)
+        if self.scheduler:
+            self.scheduler.step(loss / len(dataset), self.epoch)
+
         self.epoch += 1
         showPlot(plot_losses, self.args, self.epoch)
         showPlot(plot_tree_grad, self.args, self.epoch, plot_name='grad')

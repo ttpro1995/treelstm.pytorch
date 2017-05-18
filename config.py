@@ -105,8 +105,27 @@ def parse_args(type=0):
                             help='weight decay (default: 1e-4)')
         parser.add_argument('--reg', default=1e-4, type=float,
                             help='l2 regularization (default: 1e-4)')
+
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
+        parser.add_argument('--sgd_momentum', default=0, type=float,
+                            help='sdg momentum param')
+        parser.add_argument('--sgd_dampening', default=0, type=float,
+                            help='sdg dampening param')
+        parser.add_argument('--sgd_nesterov', default=0, type=int,
+                            help='sdg nesterov param')
+
+        parser.add_argument('--scheduler', default=0, type=int,
+                            help='use scheduler (default: 0, not use)')
+        parser.add_argument('--scheduler_factor', default=0.1, type=float,
+                            help='factor')
+        parser.add_argument('--scheduler_patience', default=5, type=int,
+                            help='patience')
+        parser.add_argument('--scheduler_cooldown', default=0, type=float,
+                            help='cooldown')
+        parser.add_argument('--scheduler_epsilon', default=1e-4, type=float,
+                            help='epsilon')
+
         parser.add_argument('--seed', default=123, type=int,
                             help='random seed (default: 123)')
         parser.add_argument('--fine_grain', default=False, type=bool,
@@ -124,8 +143,11 @@ def parse_args(type=0):
         parser.add_argument('--rel_dim', default=0, type=int,
                             help='rel embedding dimension (default:0)')
 
+
         parser.add_argument('--name', default='default_log',
                             help='log name (default: default_log)')
+        parser.add_argument('--mode', default='DEBUG',
+                            help='mode DEBUG, EXPERIMENT (default: DEBUG)')
 
     cuda_parser = parser.add_mutually_exclusive_group(required=False)
     cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')
