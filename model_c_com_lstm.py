@@ -15,12 +15,16 @@ def new_gate(mode, word_dim, tag_dim, mem_dim):
         Uh = nn.Linear(mem_dim, mem_dim)  # h_prev from left
         Uk = nn.Linear(mem_dim, mem_dim)  # k from down
         return We, Wt, Wtp, Uh, Uk
-    elif mode == 'node':
+    elif mode == 'child':
         Wt = nn.Linear(tag_dim, mem_dim)  # child tag
         Wtp = nn.Linear(tag_dim, mem_dim)  # parent tag
         Uh = nn.Linear(mem_dim, mem_dim)  # h_prev from left
         Uk = nn.Linear(mem_dim, mem_dim)  # k from down
         return Wt, Wtp, Uh, Uk
+    elif mode == 'node':
+        Wt = nn.Linear(tag_dim, mem_dim)  # current tag
+        Uh = nn.Linear(mem_dim, mem_dim)  # h_prev from left
+        return Wt, Uh
     elif mode == 'leaf':
         We = nn.Linear(word_dim, mem_dim)  # embedding
         Wt = nn.Linear(tag_dim, mem_dim)  # child tag
@@ -30,9 +34,7 @@ def new_gate(mode, word_dim, tag_dim, mem_dim):
     elif mode == 'simpleleaf':
         We = nn.Linear(word_dim, mem_dim)  # embedding
         Wt = nn.Linear(tag_dim, mem_dim)  # child tag
-        Wtp = nn.Linear(tag_dim, mem_dim)
-        return We, Wt, Wtp
-
+        return We, Wt
 
 class LeafModule(nn.Module):
     """
@@ -91,46 +93,36 @@ class SimpleLeafModule(nn.Module):
         self.tag_dim = tag_dim
         self.mem_dim = mem_dim
 
-        self.ie, self.it, self.itp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
-        self.oe, self.ot, self.otp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
-        self.fle, self.flt, self.fltp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
-        self.ue, self.ut, self.utp = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+        self.ie, self.it = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+        self.oe, self.ot = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+        self.fle, self.flt = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
+        self.ue, self.ut = new_gate('simpleleaf', word_dim, tag_dim, mem_dim)
 
         if self.cudaFlag:
             self.ie = self.ie.cuda()
             self.it = self.it.cuda()
-            self.ih = self.ih.cuda()
-            self.itp = self.itp.cuda()
 
             self.oe = self.oe.cuda()
             self.ot = self.ot.cuda()
-            self.oh = self.oh.cuda()
-            self.otp = self.otp.cuda()
 
             self.fle = self.fle.cuda()
             self.flt = self.flt.cuda()
-            self.flh = self.flh.cuda()
-            self.fltp = self.fltp.cuda()
 
             self.ue = self.ue.cuda()
             self.ut = self.ut.cuda()
-            self.uh = self.uh.cuda()
-            self.utp = self.utp.cuda()
 
-    def forward(self, e, tag, tag_parent, h_prev, c_prev):
-        i = F.sigmoid(self.ie(e) + self.it(tag) + self.itp(tag_parent) +self.ih(h_prev))
-        o = F.sigmoid(self.oe(e) + self.ot(tag) + self.otp(tag_parent) + self.oh(h_prev))
-        f_left = F.sigmoid(self.fle(e) + self.flt(tag) + self.fltp(tag_parent) + self.flh(h_prev))
-        u = F.tanh(self.ue(e) + self.ut(tag) + self.utp(tag_parent) +  self.uh(h_prev))
-        c = i*u + f_left*c_prev
+    def forward(self, e, tag):
+        i = F.sigmoid(self.ie(e) + self.it(tag))
+        o = F.sigmoid(self.oe(e) + self.ot(tag))
+        u = F.tanh(self.ue(e) + self.ut(tag))
+        c = i*u
         h = o * F.tanh(c)
         return h, c
 
-
 class NodeModule(nn.Module):
     """
-    have q, k but not e
-    """
+       have q, k but not e
+       """
     def __init__(self, cuda, word_dim, tag_dim, mem_dim):
         super(NodeModule, self).__init__()
         self.cudaFlag = cuda
@@ -138,11 +130,50 @@ class NodeModule(nn.Module):
         self.tag_dim = tag_dim
         self.mem_dim = mem_dim
 
-        self.it, self.itp, self.ih, self.ik = new_gate('node', word_dim, tag_dim, mem_dim)
-        self.ot, self.otp, self.oh, self.ok = new_gate('node', word_dim, tag_dim, mem_dim)
-        self.flt, self.fltp, self.flh, self.flk = new_gate('node', word_dim, tag_dim, mem_dim)
-        self.fdt, self.fdtp, self.fdh, self.fdk = new_gate('node', word_dim, tag_dim, mem_dim)
-        self.ut, self.utp, self.uh, self.uk = new_gate('node', word_dim, tag_dim, mem_dim)
+        self.it, self.ih = new_gate('node', word_dim, tag_dim, mem_dim)
+        self.ot, self.oh = new_gate('node', word_dim, tag_dim, mem_dim)
+        self.flt, self.flh = new_gate('node', word_dim, tag_dim, mem_dim)
+        self.ut, self.uh = new_gate('node', word_dim, tag_dim, mem_dim)
+
+        if self.cudaFlag:
+            self.it = self.it.cuda()
+            self.ih = self.ih.cuda()
+
+            self.ot = self.ot.cuda()
+            self.oh = self.oh.cuda()
+
+            self.flt = self.flt.cuda()
+            self.flh = self.flh.cuda()
+
+            self.ut = self.ut.cuda()
+            self.uh = self.uh.cuda()
+
+
+    def forward(self, tag, h_prev, c_prev):
+        i = F.sigmoid(self.it(tag) + self.ih(h_prev))
+        o = F.sigmoid(self.ot(tag) + self.oh(h_prev))
+        f_left = F.sigmoid(self.flt(tag) + self.flh(h_prev))
+        u = F.tanh(self.ut(tag) + self.uh(h_prev))
+        c = i * u + f_left * c_prev
+        h = o * F.tanh(c)
+        return h, c
+
+class ChildModule(nn.Module):
+    """
+    have q, k but not e
+    """
+    def __init__(self, cuda, word_dim, tag_dim, mem_dim):
+        super(ChildModule, self).__init__()
+        self.cudaFlag = cuda
+        self.word_dim = word_dim
+        self.tag_dim = tag_dim
+        self.mem_dim = mem_dim
+
+        self.it, self.itp, self.ih, self.ik = new_gate('child', word_dim, tag_dim, mem_dim)
+        self.ot, self.otp, self.oh, self.ok = new_gate('child', word_dim, tag_dim, mem_dim)
+        self.flt, self.fltp, self.flh, self.flk = new_gate('child', word_dim, tag_dim, mem_dim)
+        self.fdt, self.fdtp, self.fdh, self.fdk = new_gate('child', word_dim, tag_dim, mem_dim)
+        self.ut, self.utp, self.uh, self.uk = new_gate('child', word_dim, tag_dim, mem_dim)
 
         if self.cudaFlag:
             self.it = self.it.cuda()
@@ -190,8 +221,9 @@ class ConstituencyTreeLSTM(nn.Module):
         self.mem_dim = mem_dim
         self.criterion = criterion
 
-        self.leaf_module = LeafModule(cuda, word_dim, tag_dim, mem_dim)
+        self.leaf_module = SimpleLeafModule(cuda, word_dim, tag_dim, mem_dim)
         self.node_module = NodeModule(cuda, word_dim, tag_dim, mem_dim)
+        self.child_module = ChildModule(cuda, word_dim, tag_dim, mem_dim)
         self.output_module = None
 
     def set_output_module(self, output_module):
@@ -224,11 +256,23 @@ class ConstituencyTreeLSTM(nn.Module):
 
         if tree.num_children == 0:
             # leaf case
-            tree.state = self.leaf_module.forward(e)
+            tree.state = self.leaf_module.forward(embs[tree.idx-1], tags[tree.idx-1])
         else:
             for idx in xrange(tree.num_children):
                 _, child_loss = self.forward(tree.children[idx], embs, training)
                 loss = loss + child_loss
+
+            # node case
+            h = Var(torch.zeros(1, self.mem_dim))
+            c = Var(torch.zeros(1, self.mem_dim))
+            if self.cudaFlag:
+                h = h.cuda()
+                c = c.cuda()
+            for i in xrange(tree.num_children): # seq lstm on child
+                child = tree.children[i]
+                child_idx = child.idx
+                h, c = self.child_module.forward(tags[child_idx-1], tags[tree.idx-1], h, c, child.state[0], child.state[1])
+            tree.state = self.node_module.forward(tags[tree.idx-1], h, c) # for current node only
 
 
         if self.output_module != None and tree.num_children != 0:
