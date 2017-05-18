@@ -12,7 +12,6 @@ import utils
 import sys
 from meowlogtool import log_util
 
-
 # IMPORT CONSTANTS
 import Constants
 # NEURAL NETWORK MODULES/LAYERS
@@ -30,10 +29,11 @@ from utils import load_word_vectors, build_vocab
 from config import parse_args, print_config
 # TRAIN AND TEST HELPER FUNCTIONS
 from trainer import SentimentTrainer
-
+from lr_scheduler import ReduceLROnPlateau
 from embedding_model import EmbeddingModel
 from faster_gru import TreeGRUSentiment
 import gc
+
 
 # MAIN BLOCK
 def main():
@@ -42,11 +42,11 @@ def main():
     print_config(args)
     CONST.show_const()
 
-    args.word_dim= args.input_dim
+    args.word_dim = args.input_dim
     if args.fine_grain:
-        args.num_classes = 5 # 0 1 2 3 4
+        args.num_classes = 5  # 0 1 2 3 4
     else:
-        args.num_classes = 3 # 0 1 2 (1 neutral)
+        args.num_classes = 3  # 0 1 2 (1 neutral)
 
     args.cuda = args.cuda and torch.cuda.is_available()
     # args.cuda = False
@@ -55,14 +55,14 @@ def main():
     if args.cuda:
         torch.cuda.manual_seed(args.seed)
 
-    train_dir = os.path.join(args.data,'train/')
-    dev_dir = os.path.join(args.data,'dev/')
-    test_dir = os.path.join(args.data,'test/')
+    train_dir = os.path.join(args.data, 'train/')
+    dev_dir = os.path.join(args.data, 'dev/')
+    test_dir = os.path.join(args.data, 'test/')
 
     # write unique words from all token files
     token_files = [os.path.join(split, 'sents.toksc') for split in [train_dir, dev_dir, test_dir]]
     tag_token_files = [os.path.join(split, 'ctags.txt') for split in [train_dir, dev_dir, test_dir]]
-    vocab_file = os.path.join(args.data,'vocab.txt')
+    vocab_file = os.path.join(args.data, 'vocab.txt')
     tag_vocab_file = os.path.join(args.data, 'tagvocab.txt')
     build_vocab(token_files, vocab_file)
     build_vocab(tag_token_files, tag_vocab_file)
@@ -73,13 +73,12 @@ def main():
     print('==> SST vocabulary size : %d ' % vocab.size())
     print('==> SST tag vocabulary size : %d ' % tagvocab.size())
 
-
     # Load SST dataset splits
 
-    is_preprocessing_data = False # let program turn off after preprocess data
+    is_preprocessing_data = False  # let program turn off after preprocess data
 
     # train
-    train_file = os.path.join(args.data,'sst_train.pth')
+    train_file = os.path.join(args.data, 'sst_train.pth')
     if os.path.isfile(train_file):
         train_dataset = torch.load(train_file)
     else:
@@ -88,7 +87,7 @@ def main():
         is_preprocessing_data = True
 
     # dev
-    dev_file = os.path.join(args.data,'sst_dev.pth')
+    dev_file = os.path.join(args.data, 'sst_dev.pth')
     if os.path.isfile(dev_file):
         dev_dataset = torch.load(dev_file)
     else:
@@ -97,7 +96,7 @@ def main():
         is_preprocessing_data = True
 
     # test
-    test_file = os.path.join(args.data,'sst_test.pth')
+    test_file = os.path.join(args.data, 'sst_test.pth')
     if os.path.isfile(test_file):
         test_dataset = torch.load(test_file)
     else:
@@ -118,25 +117,41 @@ def main():
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
     #                             padding_idx=Constants.PAD)
 
-    embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), 0, args.word_dim, args.tag_dim, args.rel_dim)
+    embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), 0, args.word_dim, args.tag_dim,
+                                     args.rel_dim)
 
     if args.cuda:
         model.cuda(), criterion.cuda()
-    if args.optim=='adam':
-        optimizer   = optim.Adam([
-                {'params': model.parameters(), 'lr': args.lr, 'weight_decay' : args.wd},
-               # {'params': embedding_model.parameters(), 'lr': args.emblr}
-            ])
-    elif args.optim=='adagrad':
+    if args.optim == 'adam':
+        optimizer = optim.Adam([
+            {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
+            # {'params': embedding_model.parameters(), 'lr': args.emblr}
+        ])
+        scheduler=None
+    elif args.optim == 'adagrad':
         optimizer = optim.Adagrad([
-                {'params': model.parameters(), 'lr': args.lr, 'weight_decay' : args.wd},
-               # {'params': embedding_model.parameters(), 'lr': args.emblr}
-            ])
-
-    print ('optim '+ args.optim)
-    print ('learning rate '+ str(args.lr))
-    print ('embedding learning rate '+ str(args.emblr))
-    print ('weight decay' + str(args.wd))
+            {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
+            # {'params': embedding_model.parameters(), 'lr': args.emblr}
+        ])
+        scheduler = None
+    elif args.optim == 'adagrad_decade':
+        optimizer = optim.Adagrad([
+            {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
+            # {'params': embedding_model.parameters(), 'lr': args.emblr}
+        ])
+        scheduler = ReduceLROnPlateau(optimizer, factor=0.1, patience=5,
+                                      verbose=1, mode='min', cooldown=0, epsilon=5e-2)
+    elif args.optim == 'adam_decade':
+        optimizer = optim.Adam([
+            {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
+            # {'params': embedding_model.parameters(), 'lr': args.emblr}
+        ])
+        scheduler = ReduceLROnPlateau(optimizer, factor=0.1, patience=5,
+                                      verbose=1, mode='min', cooldown=0, epsilon=5e-2)
+    print('optim ' + args.optim)
+    print('learning rate ' + str(args.lr))
+    print('embedding learning rate ' + str(args.emblr))
+    print('weight decay' + str(args.wd))
 
     metrics = Metrics(args.num_classes)
 
@@ -149,9 +164,9 @@ def main():
         emb = torch.load(emb_file)
     else:
         # load glove embeddings and vocab
-        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove,'glove.840B.300d'))
+        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove, 'glove.840B.300d'))
         print('==> GLOVE vocabulary size: %d ' % glove_vocab.size())
-        emb = torch.zeros(vocab.size(),glove_emb.size(1))
+        emb = torch.zeros(vocab.size(), glove_emb.size(1))
         # zero out the embeddings for padding and other special words if they are absent in vocab
         # for idx, item in enumerate([Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD]):
         #     emb[idx].zero_()
@@ -160,9 +175,9 @@ def main():
             if glove_vocab.getIndex(word):
                 emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
             else:
-                emb[vocab.getIndex(word)] = torch.Tensor(emb[vocab.getIndex(word)].size()).normal_(-0.05,0.05)
+                emb[vocab.getIndex(word)] = torch.Tensor(emb[vocab.getIndex(word)].size()).normal_(-0.05, 0.05)
         torch.save(emb, emb_file)
-        is_preprocessing_data = True # flag to quit
+        is_preprocessing_data = True  # flag to quit
         print('done creating emb, quit')
 
     tag_emb_file = os.path.join(args.data, 'tag_embed.pth')
@@ -181,17 +196,17 @@ def main():
             if glove_vocab.getIndex(word):
                 tag_emb[tagvocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
             else:
-                tag_emb[tagvocab.getIndex(word)] = torch.Tensor(tag_emb[tagvocab.getIndex(word)].size()).normal_(-0.05, 0.05)
+                tag_emb[tagvocab.getIndex(word)] = torch.Tensor(tag_emb[tagvocab.getIndex(word)].size()).normal_(-0.05,
+                                                                                                                 0.05)
         torch.save(tag_emb, tag_emb_file)
         is_preprocessing_data = True  # flag to quit
         print('done creating emb, quit')
-
 
         is_preprocessing_data = True  # flag to quit
         print('done creating emb, quit')
 
     if is_preprocessing_data:
-        print ('quit program due to memory leak during preprocess data, please rerun sentiment.py')
+        print('quit program due to memory leak during preprocess data, please rerun sentiment.py')
         quit()
 
     # plug these into embedding matrix inside model
@@ -210,55 +225,55 @@ def main():
     if args.rel_glove:
         assert False
 
-
     # create trainer object for training and testing
-    trainer  = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
+    trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer, scheduler=scheduler)
 
-    mode = 'EXPERIMENT'
+    mode = CONST.mode
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
-            dev_loss = trainer.train(dev_dataset)
+            train_loss = trainer.train(dev_dataset)
             dev_loss, dev_pred = trainer.test(dev_dataset)
             test_loss, test_pred = trainer.test(test_dataset)
 
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+            print('==> Train loss   : %f \t' % train_loss, end="")
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch + 1, 'dev percentage ', dev_acc, 'test percentage ', test_acc)
     elif mode == "PRINT_TREE":
         for i in range(0, 10):
-            ttree, tsent, ttag, trel ,tlabel = dev_dataset[i]
+            ttree, tsent, ttag, trel, tlabel = dev_dataset[i]
             se = vocab.convertToLabels(tsent, Constants.UNK)
             sentences = ' '.join(se)
-            print (sentences)
+            print(sentences)
             utils.print_tree(vocab, tagvocab, tsent, ttree, 0)
 
-            print ('_______________')
-        print ('break')
+            print('_______________')
+        print('break')
         quit()
     elif mode == "EXPERIMENT":
         max_dev = 0
         max_dev_epoch = 0
-        filename = args.name+'.pth'
+        filename = args.name + '.pth'
         for epoch in range(args.epochs):
-            train_loss             = trainer.train(train_dataset)
+            train_loss = trainer.train(train_dataset)
             train_loss, train_pred = trainer.test(train_dataset)
-            dev_loss, dev_pred     = trainer.test(dev_dataset)
+            dev_loss, dev_pred = trainer.test(dev_dataset)
             train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             print('==> Train loss   : %f \t' % train_loss, end="")
-            print ('train percentage ' + str(train_acc))
-            print('Epoch ',epoch, 'dev percentage ',dev_acc)
-            torch.save(model, args.saved + str(epoch)+'_model_'+filename)
-            torch.save(embedding_model, args.saved + str(epoch)+'_embedding_'+filename)
+            print('train percentage ' + str(train_acc))
+            print('Epoch ', epoch, 'dev percentage ', dev_acc)
+            torch.save(model, args.saved + str(epoch) + '_model_' + filename)
+            torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             if dev_acc > max_dev:
                 max_dev = dev_acc
                 max_dev_epoch = epoch
             gc.collect()
-        print ('epoch ' + str(max_dev_epoch) +' dev score of ' + str(max_dev))
-        print ('eva on test set ')
-        model = torch.load(args.saved + str(max_dev_epoch)+'_model_'+filename)
-        embedding_model = torch.load(args.saved + str(max_dev_epoch)+'_embedding_'+filename)
+        print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
+        print('eva on test set ')
+        model = torch.load(args.saved + str(max_dev_epoch) + '_model_' + filename)
+        embedding_model = torch.load(args.saved + str(max_dev_epoch) + '_embedding_' + filename)
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
         test_loss, test_pred = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
@@ -266,28 +281,27 @@ def main():
         print('____________________' + str(args.name) + '___________________')
     else:
         for epoch in range(args.epochs):
-            train_loss             = trainer.train(train_dataset)
+            train_loss = trainer.train(train_dataset)
             train_loss, train_pred = trainer.test(train_dataset)
-            dev_loss, dev_pred     = trainer.test(dev_dataset)
-            test_loss, test_pred   = trainer.test(test_dataset)
+            dev_loss, dev_pred = trainer.test(dev_dataset)
+            test_loss, test_pred = trainer.test(test_dataset)
 
             train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
             print('==> Train loss   : %f \t' % train_loss, end="")
             print('Epoch ', epoch, 'train percentage ', train_acc)
-            print('Epoch ',epoch, 'dev percentage ',dev_acc )
+            print('Epoch ', epoch, 'dev percentage ', dev_acc)
             print('Epoch ', epoch, 'test percentage ', test_acc)
-
 
 
 if __name__ == "__main__":
     # log to console and file
     args = parse_args(type=Constants.TYPE_constituency)
     logger1 = log_util.create_logger(args.name, print_console=True)
-    logger1.info("LOG_FILE") # log using loggerba
+    logger1.info("LOG_FILE")  # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)
     sys.stdout = s1
-    print ('_________________________________start___________________________________')
+    print('_________________________________start___________________________________')
     main()

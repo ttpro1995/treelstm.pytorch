@@ -139,7 +139,7 @@ class TreeGRUSentiment(nn.Module):
         super(TreeGRUSentiment, self).__init__()
         self.cudaFlag = cuda
         self.tree_module = FasterGRUTree(cuda, word_dim, tag_dim, mem_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=CONST.output_module_dropout)
         self.tree_module.set_output_module(self.output_module)
 
     def forward(self, tree, embs, tags, training = False):

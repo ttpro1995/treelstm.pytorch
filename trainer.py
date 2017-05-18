@@ -15,17 +15,18 @@ import numpy as np
 def showPlot(points, args, epoch, path = './plot/', plot_name = 'loss'):
     fig, ax = plt.subplots()
     # this locator puts ticks at regular intervals
-    loc = ticker.MultipleLocator(base=0.2)
-    ax.yaxis.set_major_locator(loc)
+    # loc = ticker.MultipleLocator(base=0.05)
+    # ax.yaxis.set_major_locator(loc)
     plt.plot(points)
     plt.savefig(os.path.join(path, args.name+'_'+plot_name+'_'+str(epoch)+'.png'))
+    plt.close()
 
 
 class SentimentTrainer(object):
     """
     For Sentiment module
     """
-    def __init__(self, args, model, embedding_model, criterion, optimizer, plot_every = 25):
+    def __init__(self, args, model, embedding_model, criterion, optimizer, plot_every = 25, scheduler=None):
         super(SentimentTrainer, self).__init__()
         self.args       = args
         self.model      = model
@@ -34,6 +35,7 @@ class SentimentTrainer(object):
         self.epoch      = 0
         self.embedding_model = embedding_model
         self.plot_every = plot_every
+        self.scheduler = scheduler
 
 
     # helper function for training
@@ -107,10 +109,12 @@ class SentimentTrainer(object):
                 self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
                 k = 0
+        if self.args.optim == "adagrad_decade" or self.args.optim == "adam_decade":
+            self.scheduler.step(loss/len(dataset), self.epoch)
         self.epoch += 1
         showPlot(plot_losses, self.args, self.epoch)
         showPlot(plot_tree_grad, self.args, self.epoch, plot_name='grad')
-        showPlot(plot_tree_grad_param, self.args, self.epoch, plot_name='gradparam')
+        showPlot(plot_tree_grad_param, self.args, self.epoch, plot_name='grad_param_ratio')
         gc.collect()
         return loss/len(dataset)
 

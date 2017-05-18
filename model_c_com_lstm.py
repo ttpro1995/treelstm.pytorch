@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import config
+import CONST
 from torch.autograd import Variable as Var
 import utils
 from model import SentimentModule
@@ -252,7 +253,7 @@ class TreeLSTMSentiment(nn.Module):
         super(TreeLSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.tree_module = ConstituencyTreeLSTM(cuda, word_dim, tag_dim, mem_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=CONST.output_module_dropout)
         self.tree_module.set_output_module(self.output_module)
 
     def forward(self, tree, embs, tags, training = False):
