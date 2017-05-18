@@ -84,7 +84,7 @@ def parse_args(type=0):
                             help='path to save location')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
-        parser.add_argument('--tag_glove', default=True, type=bool,
+        parser.add_argument('--tag_glove', default=1, type=int,
                             help='use tag embedding pretrained by glove')
         parser.add_argument('--rel_glove', default=False, type=bool,
                             help='use rel embedding pretrained by glove')
@@ -95,6 +95,8 @@ def parse_args(type=0):
                             help='number of total epochs to run')
         parser.add_argument('--lr', default=0.05, type=float,
                             metavar='LR', help='initial learning rate')
+        parser.add_argument('--rho', default=0.95, type=float,
+                            metavar='LR', help='rho for adadelta')
         parser.add_argument('--emblr', default=0, type=float,
                             metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--tag_emblr', default=0, type=float,
@@ -155,7 +157,7 @@ def parse_args(type=0):
                             help='vertical dropout')
         parser.add_argument('--word_dropout', default=0, type=float,
                             help='word dropout')
-        parser.add_argument('--post_tag_dropout', default=0, type=float,
+        parser.add_argument('--pos_tag_dropout', default=0, type=float,
                             help='pos tag dropout')
 
         parser.add_argument('--output_module_dropout', default=0, type=int,

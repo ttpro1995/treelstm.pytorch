@@ -141,6 +141,10 @@ def main():
                               dampening=args.sgd_dampening,
                               weight_decay=args.wd,
                               nesterov=args.sgd_nesterov)
+    if args.optim == 'adadelta':
+        optimizer = optim.Adadelta(model.parameters(),
+                                   lr = args.lr, rho=args.rho,
+                                   weight_decay=args.wd)
     elif args.optim == 'adagrad_decade':
         optimizer = optim.Adagrad([
             {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
