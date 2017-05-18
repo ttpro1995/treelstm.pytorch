@@ -108,12 +108,16 @@ def parse_args(type=0):
 
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
+
         parser.add_argument('--sgd_momentum', default=0, type=float,
                             help='sdg momentum param')
         parser.add_argument('--sgd_dampening', default=0, type=float,
                             help='sdg dampening param')
         parser.add_argument('--sgd_nesterov', default=0, type=int,
                             help='sdg nesterov param')
+
+        parser.add_argument('--lr_decay', default=0, type=float,
+                            help='lr_decay (adagrad only)')
 
         parser.add_argument('--scheduler', default=0, type=int,
                             help='use scheduler (default: 0, not use)')
@@ -143,6 +147,19 @@ def parse_args(type=0):
         parser.add_argument('--rel_dim', default=0, type=int,
                             help='rel embedding dimension (default:0)')
 
+        parser.add_argument('--horizontal_dropout', default=0, type=float,
+                            help='horizontal_dropout')
+        parser.add_argument('--leaf_dropout', default=0, type=float,
+                            help='leaf dropout')
+        parser.add_argument('--vertical_dropout', default=0, type=float,
+                            help='vertical dropout')
+        parser.add_argument('--word_dropout', default=0, type=float,
+                            help='word dropout')
+        parser.add_argument('--post_tag_dropout', default=0, type=float,
+                            help='pos tag dropout')
+
+        parser.add_argument('--output_module_dropout', default=0, type=int,
+                            help='sentiment module dropout (default: 0 disable)')
 
         parser.add_argument('--name', default='default_log',
                             help='log name (default: default_log)')

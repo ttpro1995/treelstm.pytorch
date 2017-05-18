@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import config
-import CONST
+import Constants
 from torch.autograd import Variable as Var
 import utils
 from model import SentimentModule
@@ -19,6 +19,8 @@ k_leaf = pytorch_GRU_cell( [emb; p[i]]; h=0 )
 class FasterGRUTree(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, mem_dim, criterion):
         super(FasterGRUTree, self).__init__()
+        args = config.parse_args(type=Constants.TYPE_constituency)
+        self.args = args
         self.cudaFlag = cuda
         self.word_dim = word_dim
         self.tag_dim = tag_dim
@@ -29,11 +31,11 @@ class FasterGRUTree(nn.Module):
         self.node_module = nn.GRUCell(1, mem_dim)
         #self.children_module = nn.GRU(mem_dim+ 2*tag_dim, mem_dim, num_layers=1, bidirectional=False, dropout=CONST.horizontal_dropout)
         self.children_module = nn.GRUCell(mem_dim + 2*tag_dim, mem_dim)
-        self.dropout_word = nn.Dropout(p=CONST.word_dropout)
-        self.dropout_pos_tag = nn.Dropout(p=CONST.pos_tag_dropout)
-        self.dropout_vertical_mem = nn.Dropout(p=CONST.vertical_dropout)
-        self.dropout_horizontal_mem = nn.Dropout(p=CONST.horizontal_dropout)
-        self.dropout_leaf = nn.Dropout(p=CONST.leaf_dropout)
+        self.dropout_word = nn.Dropout(p=args.word_dropout)
+        self.dropout_pos_tag = nn.Dropout(p=args.pos_tag_dropout)
+        self.dropout_vertical_mem = nn.Dropout(p=args.vertical_dropout)
+        self.dropout_horizontal_mem = nn.Dropout(p=args.horizontal_dropout)
+        self.dropout_leaf = nn.Dropout(p=args.leaf_dropout)
         self.output_module = None
 
     def set_output_module(self, output_module):
@@ -137,9 +139,10 @@ class FasterGRUTree(nn.Module):
 class TreeGRUSentiment(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, mem_dim, num_classes, criterion):
         super(TreeGRUSentiment, self).__init__()
+        args = config.parse_args(Constants.TYPE_constituency)
         self.cudaFlag = cuda
         self.tree_module = FasterGRUTree(cuda, word_dim, tag_dim, mem_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=CONST.output_module_dropout)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=args.output_module_dropout)
         self.tree_module.set_output_module(self.output_module)
 
     def forward(self, tree, embs, tags, training = False):

@@ -1,5 +1,4 @@
 from __future__ import print_function
-import CONST
 import os, time, argparse
 from tqdm import tqdm
 import numpy
@@ -40,7 +39,6 @@ def main():
     global args
     args = parse_args(type=Constants.TYPE_constituency)
     print_config(args)
-    CONST.show_const()
 
     args.word_dim = args.input_dim
     if args.fine_grain:
@@ -130,10 +128,12 @@ def main():
             # {'params': embedding_model.parameters(), 'lr': args.emblr}
         ])
     elif args.optim == 'adagrad':
-        optimizer = optim.Adagrad([
-            {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
-            # {'params': embedding_model.parameters(), 'lr': args.emblr}
-        ])
+        # optimizer = optim.Adagrad([
+        #     {'params': model.parameters(), 'lr': args.lr, 'weight_decay': args.wd},
+        #     # {'params': embedding_model.parameters(), 'lr': args.emblr}
+        # ])
+        optimizer = optim.Adagrad(model.parameters(), lr=args.lr,
+                                  lr_decay=args.lr_decay, weight_decay=args.weight_decay)
     elif args.optim == 'sgd':
         optimizer = optim.SGD(params=model.parameters(),
                               lr = args.lr,
