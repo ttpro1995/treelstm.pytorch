@@ -6,6 +6,7 @@ import utils
 import Constants
 from model import SentimentModule
 from embedding_model import EmbeddingModel
+import config
 
 # class GRU(nn.Module):
 #     def __init__(self, cuda,in_dim, mem_dim, num_class):
@@ -88,13 +89,14 @@ class TreeSimpleGRU(nn.Module):
         self.in_dim = word_dim
         self.tag_dim = tag_dim
         self.rel_dim = rel_dim
-        self.leaf_h = leaf_h # init h for leaf node
-        if self.leaf_h == None:
-            self.leaf_h = Var(torch.rand(1, self.mem_dim))
-            torch.save(self.leaf_h, 'leaf_h.pth')
+        # self.leaf_h = leaf_h # init h for leaf node
+        # if self.leaf_h == None:
+        #     # maybe cause of training get slower every epoch
+        #     self.leaf_h = Var(torch.rand(1, self.mem_dim))
+        #     torch.save(self.leaf_h, 'leaf_h.pth')
 
-        if self.cudaFlag:
-            self.leaf_h = self.leaf_h.cuda()
+        # if self.cudaFlag:
+        #     self.leaf_h = self.leaf_h.cuda()
 
         self.criterion = criterion
         self.output_module = None
@@ -160,7 +162,7 @@ class TreeSimpleGRU(nn.Module):
         :param tag_emb: tag embedding of current node u
         :return: k of current node u
         """
-        h = self.leaf_h
+        h = Var(torch.zeros(1, self.mem_dim), requires_grad=False)
         if self.cudaFlag:
             h = h.cuda()
         if self.tag_dim > 0:
@@ -279,9 +281,10 @@ class GRU_AT(nn.Module):
 class TreeGRUSentiment(nn.Module):
     def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion):
         super(TreeGRUSentiment, self).__init__()
+        args = config.parse_args(type=1)
         self.cudaFlag = cuda
         self.tree_module = TreeSimpleGRU(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=args.output_module_dropout)
         self.tree_module.set_output_module(self.output_module)
 
     def get_tree_parameters(self):

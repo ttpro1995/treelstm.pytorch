@@ -48,9 +48,9 @@ def parse_args(type=0):
         parser.add_argument('--emblr', default=0, type=float,
                             metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--tag_emblr', default=0, type=float,
-                            metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
+                            metavar='TEMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--rel_emblr', default=0, type=float,
-                            metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
+                            metavar='REMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--wd', default=1e-4, type=float,
                             help='weight decay (default: 1e-4)')
         parser.add_argument('--reg', default=1e-4, type=float,
@@ -66,12 +66,25 @@ def parse_args(type=0):
                             help=' embedding dimension (default:30)')
         parser.add_argument('--mem_dim', default=150, type=int,
                             help='mem_dim (default:150)')
-        parser.add_argument('--tag_dim', default=20, type=int,
+        parser.add_argument('--tag_dim', default=50, type=int,
                             help='tag embedding dimension (default:20)')
-        parser.add_argument('--rel_dim', default=20, type=int,
+        parser.add_argument('--rel_dim', default=50, type=int,
                             help='rel embedding dimension (default:20)')
         parser.add_argument('--at_hid_dim', default=100, type=int,
                             help='hidden dim of attention (0 for disable)')
+
+        parser.add_argument('--horizontal_dropout', default=0, type=float,
+                            help='horizontal_dropout')
+        parser.add_argument('--leaf_dropout', default=0, type=float,
+                            help='leaf dropout')
+        parser.add_argument('--vertical_dropout', default=0, type=float,
+                            help='vertical dropout')
+        parser.add_argument('--word_dropout', default=0, type=float,
+                            help='word dropout')
+        parser.add_argument('--pos_tag_dropout', default=0, type=float,
+                            help='pos tag dropout')
+        parser.add_argument('--output_module_dropout', default=1, type=int,
+                            help='sentiment module dropout (default: 1 enable)')
 
         parser.add_argument('--name', default='default_log',
                             help='log name (default: default_log)')
