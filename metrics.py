@@ -56,7 +56,7 @@ class SubtreeMetric():
     def printAcc(self):
         acc = self.getAcc()
         for key in acc.keys():
-            print ('height ' + str(key) +' '+ str(self.correct[key]) +'/'+ str(self.total[key]) +' acc ' + str(acc[key]))
+            print ('phrases ' + str(key) +' '+ str(self.correct[key]) +'/'+ str(self.total[key]) +' acc ' + str(acc[key]))
 
 if __name__ == "__main__":
     metric =  SubtreeMetric()

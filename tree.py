@@ -21,6 +21,15 @@ class Tree(object):
         self._size = count
         return self._size
 
+    def count_leaf(self):
+        if self.num_children == 0:
+            return 1
+        else:
+            s = 0
+            for child in self.children:
+                s = s + child.count_leaf()
+            return s
+
     def depth(self):
         if getattr(self,'_depth'):
             return self._depth

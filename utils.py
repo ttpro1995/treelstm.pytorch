@@ -139,6 +139,23 @@ def plot_loss(train_loss, dev_loss, args, path='./plot/'):
     plt.savefig(os.path.join(out_dir, 'Loss' + '.png'))
     plt.close()
 
+def plot_subtree_metrics(subtreemetric, epoch, args, plot_name = '', path='./plot/'):
+    acc = subtreemetric.getAcc()
+    plt.subplots()
+    plt.title('Phrases acc: ' + args.name)
+    phrases_length = []
+    phrases_acc = []
+    for key in acc.keys():
+        phrases_length.append(key)
+        phrases_acc.append(acc[key])
+
+    plt.plot(phrases_length, phrases_acc)
+    out_dir = os.path.join(path, args.name)
+    mkdir_p(out_dir)
+    plt.savefig(os.path.join(out_dir, 'Phrases' + '_'+str(epoch)+'_' +str(plot_name)+ '.png'))
+    plt.close()
+
+
 def plot_grad_stat_from_start(grads, grads_ratio, args, path='./plot/'):
     x_axis = range(len(grads))
     plt.figure(1)

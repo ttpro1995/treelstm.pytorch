@@ -69,7 +69,7 @@ class FasterGRUTree(nn.Module):
         grad = F.torch.cat(one_dim)
         return grad
 
-    def forward(self, tree, embs, tags, training = False, height = 0, subtree_metric = None):
+    def forward(self, tree, embs, tags, training = False, subtree_metric = None):
         # add singleton dimension for future call to node_forward
         # embs = F.torch.unsqueeze(self.emb(inputs),1)
 
@@ -87,7 +87,7 @@ class FasterGRUTree(nn.Module):
             tree.state = self.dropout_leaf(self.leaf_module.forward(x, h))
         else:
             for idx in xrange(tree.num_children):
-                _, child_loss = self.forward(tree.children[idx], embs, tags, training, height + 1, subtree_metric)
+                _, child_loss = self.forward(tree.children[idx], embs, tags, training, subtree_metric)
                 loss = loss + child_loss
 
             x = self.get_child_state(tree, tags)
@@ -114,7 +114,7 @@ class FasterGRUTree(nn.Module):
                 # measue subtree metrics
                 val, pred = torch.max(output, 1)
                 correct = pred.data[0][0] == tree.gold_label
-                subtree_metric.count(correct, height)
+                subtree_metric.count(correct, tree.count_leaf())
 
         return tree.state, loss
 

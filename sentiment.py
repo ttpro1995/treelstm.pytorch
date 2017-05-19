@@ -272,6 +272,8 @@ def main():
             dev_sub_metric.printAcc()
             print(' Test subtree metrics')
             test_sub_metric.printAcc()
+            utils.plot_subtree_metrics(dev_sub_metric, epoch, args, 'dev')
+            utils.plot_subtree_metrics(test_sub_metric, epoch, args, 'test')
             print('Epoch ', epoch + 1, 'dev percentage ', dev_acc, 'test percentage ', test_acc)
     elif mode == "PRINT_TREE":
         for i in range(0, 10):
