@@ -7,6 +7,7 @@ import gc
 import config
 import os.path
 import utils
+from metrics import SubtreeMetric
 
 import matplotlib.ticker as ticker
 import numpy as np
@@ -73,7 +74,7 @@ class SentimentTrainer(object):
             # params_norm = None
 
             if k == self.args.batchsize:
-                if self.args.grad_clip < 50:
+                if self.args.grad_clip < 100:
                     torch.nn.utils.clip_grad_norm(self.model.tree_module.parameters(), self.args.grad_clip)
 
                 tree_model_param_norm = self.model.tree_module.getParameters().norm().data[0]
@@ -116,6 +117,7 @@ class SentimentTrainer(object):
 
     # helper function for testing
     def test(self, dataset):
+        subtree_metric = SubtreeMetric()
         self.model.eval()
         self.embedding_model.eval()
         loss = 0
@@ -135,14 +137,15 @@ class SentimentTrainer(object):
                 rel_input = rel_input.cuda()
                 target = target.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            output, _ = self.model(tree, sent_emb, tag_emb, rel_emb)  # size(1,5)
+            # output, _ = self.model(tree, sent_emb, tag_emb, rel_emb)  # bug rel_emb ?
+            output, _ = self.model(tree, sent_emb, tag_emb, subtree_metric = subtree_metric)
             err = self.criterion(output, target)
             loss += err.data[0]
             output[:, 1] = -9999  # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             predictions[idx] = pred.data.cpu()[0][0]
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
-        return loss / len(dataset), predictions
+        return loss / len(dataset), predictions, subtree_metric
 
 
 class Trainer(object):

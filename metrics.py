@@ -28,3 +28,43 @@ class Metrics():
         total = labels.size(0)
         acc = float(correct)/total
         return acc
+
+class SubtreeMetric():
+    def __init__(self):
+        self.correct = {}
+        self.total = {}
+
+    def reset(self):
+        self.correct = {}
+        self.total = {}
+
+    def count(self, correct, height):
+        if height in self.total.keys():
+            self.total[height] +=1
+        else:
+            self.total[height] = 1
+            self.correct[height] = 0
+        if correct:
+            self.correct[height] += 1
+
+    def getAcc(self):
+        acc = {}
+        for height in self.total.keys():
+            acc[height] = float(self.correct[height]) / self.total[height]
+        return acc
+
+    def printAcc(self):
+        acc = self.getAcc()
+        for key in acc.keys():
+            print ('height ' + str(key) +' '+ str(self.correct[key]) +'/'+ str(self.total[key]) +' acc ' + str(acc[key]))
+
+if __name__ == "__main__":
+    metric =  SubtreeMetric()
+    metric.count(False, 7)
+    for i in xrange(15,2, -1):
+        metric.count(True, i)
+    metric.count(False, 3)
+    metric.count(False, 7)
+
+    acc = metric.getAcc()
+    metric.printAcc()

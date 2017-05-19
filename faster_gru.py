@@ -69,7 +69,7 @@ class FasterGRUTree(nn.Module):
         grad = F.torch.cat(one_dim)
         return grad
 
-    def forward(self, tree, embs, tags, training = False):
+    def forward(self, tree, embs, tags, training = False, height = 0, subtree_metric = None):
         # add singleton dimension for future call to node_forward
         # embs = F.torch.unsqueeze(self.emb(inputs),1)
 
@@ -87,7 +87,7 @@ class FasterGRUTree(nn.Module):
             tree.state = self.dropout_leaf(self.leaf_module.forward(x, h))
         else:
             for idx in xrange(tree.num_children):
-                _, child_loss = self.forward(tree.children[idx], embs, tags, training)
+                _, child_loss = self.forward(tree.children[idx], embs, tags, training, height + 1, subtree_metric)
                 loss = loss + child_loss
 
             x = self.get_child_state(tree, tags)
@@ -102,9 +102,6 @@ class FasterGRUTree(nn.Module):
                 x_zeros = x_zeros.cuda()
             tree.state = self.dropout_vertical_mem(self.node_module.forward(x_zeros, h_final))
 
-
-
-
         if self.output_module != None:
             output = self.output_module.forward(tree.state, training)
             tree.output = output
@@ -113,6 +110,12 @@ class FasterGRUTree(nn.Module):
                 if self.cudaFlag:
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
+            if subtree_metric and not training and tree.parent and tree.gold_label:
+                # measue subtree metrics
+                val, pred = torch.max(output, 1)
+                correct = pred.data[0][0] == tree.gold_label
+                subtree_metric.count(correct, height)
+
         return tree.state, loss
 
 
@@ -145,7 +148,7 @@ class TreeGRUSentiment(nn.Module):
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=args.output_module_dropout)
         self.tree_module.set_output_module(self.output_module)
 
-    def forward(self, tree, embs, tags, training = False):
-        tree_state, loss = self.tree_module(tree, embs, tags, training)
+    def forward(self, tree, embs, tags, training = False, subtree_metric = None):
+        tree_state, loss = self.tree_module(tree, embs, tags, training, subtree_metric = subtree_metric)
         output = tree.output
         return output, loss

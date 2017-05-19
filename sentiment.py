@@ -254,8 +254,8 @@ def main():
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             train_loss = trainer.train(dev_dataset)
-            dev_loss, dev_pred = trainer.test(dev_dataset)
-            test_loss, test_pred = trainer.test(test_dataset)
+            dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)
+            test_loss, test_pred, test_sub_metric = trainer.test(test_dataset)
             stat_train_loss.append(dev_loss)
             stat_dev_loss.append(test_loss)
 
@@ -268,6 +268,10 @@ def main():
             utils.plot_accuracy(stat_train_acc, stat_dev_acc, args)
             print('==> Train loss   : %f \t' % train_loss, end="")
             print('==> Dev loss   : %f \t' % dev_loss, end="")
+            print ('Dev subtree metrics')
+            dev_sub_metric.printAcc()
+            print(' Test subtree metrics')
+            test_sub_metric.printAcc()
             print('Epoch ', epoch + 1, 'dev percentage ', dev_acc, 'test percentage ', test_acc)
     elif mode == "PRINT_TREE":
         for i in range(0, 10):
