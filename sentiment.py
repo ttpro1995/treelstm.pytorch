@@ -24,8 +24,9 @@ from dataset import SSTConstituencyDataset
 from metrics import Metrics
 # UTILITY FUNCTIONS
 from utils import load_word_vectors, build_vocab
+import utils
 # CONFIG PARSER
-from config import parse_args, print_config
+from config import parse_args
 # TRAIN AND TEST HELPER FUNCTIONS
 from trainer import SentimentTrainer
 from lr_scheduler import ReduceLROnPlateau
@@ -38,7 +39,7 @@ import gc
 def main():
     global args
     args = parse_args(type=Constants.TYPE_constituency)
-    print_config(args)
+
 
     args.word_dim = args.input_dim
     if args.fine_grain:
@@ -133,17 +134,17 @@ def main():
         #     # {'params': embedding_model.parameters(), 'lr': args.emblr}
         # ])
         optimizer = optim.Adagrad(model.parameters(), lr=args.lr,
-                                  lr_decay=args.lr_decay, weight_decay=args.weight_decay)
+                                  lr_decay=args.lr_decay, weight_decay=args.wd)
     elif args.optim == 'sgd':
         optimizer = optim.SGD(params=model.parameters(),
-                              lr = args.lr,
+                              lr=args.lr,
                               momentum=args.sgd_momentum,
                               dampening=args.sgd_dampening,
                               weight_decay=args.wd,
                               nesterov=args.sgd_nesterov)
     if args.optim == 'adadelta':
         optimizer = optim.Adadelta(model.parameters(),
-                                   lr = args.lr, rho=args.rho,
+                                   lr=args.lr, rho=args.rho,
                                    weight_decay=args.wd)
     elif args.optim == 'adagrad_decade':
         optimizer = optim.Adagrad([
@@ -161,7 +162,8 @@ def main():
                                       verbose=1, mode='min', cooldown=0, epsilon=5e-2)
     if args.scheduler:
         scheduler = ReduceLROnPlateau(optimizer, factor=args.scheduler_factor, patience=args.scheduler_patience,
-                                  verbose=1, mode='min', cooldown=args.scheduler_cooldown, epsilon=args.scheduler_epsilon)
+                                      verbose=1, mode='min', cooldown=args.scheduler_cooldown,
+                                      epsilon=args.scheduler_epsilon)
 
     print('optim ' + args.optim)
     print('learning rate ' + str(args.lr))
@@ -244,14 +246,26 @@ def main():
     trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer, scheduler=scheduler)
 
     mode = args.mode
+    stat_dev_acc = []
+    stat_train_acc = []
+    stat_dev_loss = []
+    stat_train_loss = []
+    utils.save_config(args)
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             train_loss = trainer.train(dev_dataset)
             dev_loss, dev_pred = trainer.test(dev_dataset)
             test_loss, test_pred = trainer.test(test_dataset)
+            stat_train_loss.append(dev_loss)
+            stat_dev_loss.append(test_loss)
 
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+            stat_train_acc.append(dev_acc)
+            stat_dev_acc.append(test_acc)
+
+            utils.plot_loss(stat_train_loss, stat_dev_loss, args)
+            utils.plot_accuracy(stat_train_acc, stat_dev_acc, args)
             print('==> Train loss   : %f \t' % train_loss, end="")
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch + 1, 'dev percentage ', dev_acc, 'test percentage ', test_acc)
@@ -274,8 +288,17 @@ def main():
             train_loss = trainer.train(train_dataset)
             train_loss, train_pred = trainer.test(train_dataset)
             dev_loss, dev_pred = trainer.test(dev_dataset)
+            stat_train_loss.append(train_loss)
+            stat_dev_loss.append(dev_loss)
+
             train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            stat_train_acc.append(train_acc)
+            stat_dev_acc.append(dev_acc)
+
+            utils.plot_loss(stat_train_loss, stat_dev_loss, args)
+            utils.plot_accuracy(stat_train_acc, stat_dev_acc, args)
+
             print('==> Train loss   : %f \t' % train_loss, end="")
             print('train percentage ' + str(train_acc))
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
@@ -295,6 +318,7 @@ def main():
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
         print('____________________' + str(args.name) + '___________________')
     else:
+        print('DA FUCK IS THIS MODE : ' + str(args.mode))
         for epoch in range(args.epochs):
             train_loss = trainer.train(train_dataset)
             train_loss, train_pred = trainer.test(train_dataset)

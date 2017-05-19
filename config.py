@@ -1,4 +1,5 @@
 import argparse
+import random
 
 def parse_args(type=0):
     if type == 0:
@@ -132,8 +133,11 @@ def parse_args(type=0):
         parser.add_argument('--scheduler_epsilon', default=1e-4, type=float,
                             help='epsilon')
 
-        parser.add_argument('--seed', default=123, type=int,
-                            help='random seed (default: 123)')
+        parser.add_argument('--grad_clip', default=1000, type=float,
+                            help='clipping gradient threshold (99999 for disable)')
+
+        parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
+                            help='random seed (default: random)')
         parser.add_argument('--fine_grain', default=False, type=bool,
                             help='fine grained (default False)')
 
@@ -176,23 +180,4 @@ def parse_args(type=0):
     args = parser.parse_args()
     return args
 
-def print_config(args):
-    print ('name ' + str(args.name))
-    print ('batchsize ' + str(args.batchsize))
-    print ('epochs ' + str(args.epochs))
-    print ('lr ' + str(args.lr))
-    print ('emblr ' + str(args.emblr))
-    print ('tag_emblr ' + str(args.tag_emblr))
-    print ('rel_emblr ' + str(args.rel_emblr))
-    print ('wd ' + str(args.wd))
-    print ('reg ' + str(args.reg))
-    print ('optim ' + str(args.optim))
-    print ('input_dim ' + str(args.input_dim))
-    print ('mem_dim ' + str(args.mem_dim))
 
-    print ('tag_dim ' + str(args.tag_dim))
-    print ('rel_dim ' + str(args.rel_dim))
-    print ('at_hid_dim ' + str(args.at_hid_dim))
-
-    print ('tag_glove ' + str(args.tag_glove))
-    print ('rel_glove ' + str(args.rel_glove))

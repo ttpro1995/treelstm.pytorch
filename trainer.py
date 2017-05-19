@@ -6,36 +6,32 @@ import torch.nn.functional as F
 import gc
 import config
 import os.path
+import utils
 
-import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 
 
-def showPlot(points, args, epoch, path = './plot/', plot_name = 'loss'):
-    fig, ax = plt.subplots()
-    # this locator puts ticks at regular intervals
-    # loc = ticker.MultipleLocator(base=0.05)
-    # ax.yaxis.set_major_locator(loc)
-    plt.plot(points)
-    plt.savefig(os.path.join(path, args.name+'_'+plot_name+'_'+str(epoch)+'.png'))
-    plt.close()
 
 
 class SentimentTrainer(object):
     """
     For Sentiment module
     """
-    def __init__(self, args, model, embedding_model, criterion, optimizer, plot_every = 25, scheduler=None):
+
+    def __init__(self, args, model, embedding_model, criterion, optimizer, plot_every=25, scheduler=None):
         super(SentimentTrainer, self).__init__()
-        self.args       = args
-        self.model      = model
-        self.criterion  = criterion
-        self.optimizer  = optimizer
-        self.epoch      = 0
+        self.args = args
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.epoch = 0
         self.embedding_model = embedding_model
         self.plot_every = plot_every
         self.scheduler = scheduler
+
+        self.plot_tree_grad = []
+        self.plot_tree_grad_param = []
 
 
     # helper function for training
@@ -45,18 +41,16 @@ class SentimentTrainer(object):
         self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
 
-
         # plot
         plot_loss_total = 0
         plot_count = 0
-        plot_losses = []
 
-        plot_tree_grad = []
-        plot_tree_grad_param = []
+        epoch_plot_tree_grad = []
+        epoch_plot_tree_grad_param = []
 
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
-        for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
+        for idx in tqdm(xrange(len(dataset)), desc='Training epoch ' + str(self.epoch + 1) + ''):
             tree, sent, tag, rel, label = dataset[indices[idx]]
             input = Var(sent)
             tag_input = Var(tag)
@@ -66,35 +60,34 @@ class SentimentTrainer(object):
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
             sent_emb, tag_emb, _ = self.embedding_model(input, tag_input, rel_input)
-            output, err = self.model.forward(tree, sent_emb, tag_emb, training = True)
-            #params = self.model.get_tree_parameters()
-            #params_norm = params.norm()
-            err = err/self.args.batchsize #+ 0.5*self.args.reg*params_norm*params_norm # custom bias
-            loss += err.data[0] #
+            output, err = self.model.forward(tree, sent_emb, tag_emb, training=True)
+            # params = self.model.get_tree_parameters()
+            # params_norm = params.norm()
+            err = err / self.args.batchsize  # + 0.5*self.args.reg*params_norm*params_norm # custom bias
+            loss += err.data[0]  #
             plot_loss_total += err.data[0]
             err.backward()
             k += 1
-            plot_count +=1
-            #params = None
-            #params_norm = None
+            plot_count += 1
+            # params = None
+            # params_norm = None
 
-            if self.plot_every and plot_count == self.plot_every:
-                plot_loss_avg = plot_loss_total / self.plot_every
-                plot_losses.append(plot_loss_avg)
-                plot_loss_total = 0
-                plot_count = 0
-
-            if k==self.args.batchsize:
+            if k == self.args.batchsize:
+                if self.args.grad_clip < 50:
+                    torch.nn.utils.clip_grad_norm(self.model.tree_module.parameters(), self.args.grad_clip)
 
                 tree_model_param_norm = self.model.tree_module.getParameters().norm().data[0]
                 tree_model_grad_norm = self.model.tree_module.getGrad().norm().data[0]
-                tree_model_grad_param = tree_model_grad_norm/tree_model_param_norm
+                tree_model_grad_param = tree_model_grad_norm / tree_model_param_norm
 
-                plot_tree_grad.append(tree_model_grad_norm)
-                plot_tree_grad_param.append(tree_model_grad_param)
+                self.plot_tree_grad.append(tree_model_grad_norm)
+                epoch_plot_tree_grad.append(tree_model_grad_norm)
+                self.plot_tree_grad_param.append(tree_model_grad_param)
+                epoch_plot_tree_grad_param.append(tree_model_grad_param)
+
 
                 if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
-                    for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
+                    for f in self.embedding_model.tag_emb.parameters():  # train tag embedding
                         f.data.sub_(f.grad.data * self.args.tag_emblr)
 
                 if self.args.rel_emblr > 0 and self.args.rel_dim > 0:
@@ -111,13 +104,15 @@ class SentimentTrainer(object):
                 k = 0
         if self.scheduler:
             self.scheduler.step(loss / len(dataset), self.epoch)
+        utils.plot_grad_stat_epoch(epoch_plot_tree_grad, epoch_plot_tree_grad_param,
+                                   self.args,self.epoch)
+        utils.plot_grad_stat_from_start(self.plot_tree_grad, self.plot_tree_grad_param,
+                                        self.args)
 
         self.epoch += 1
-        showPlot(plot_losses, self.args, self.epoch)
-        showPlot(plot_tree_grad, self.args, self.epoch, plot_name='grad')
-        showPlot(plot_tree_grad_param, self.args, self.epoch, plot_name='grad_param_ratio')
+
         gc.collect()
-        return loss/len(dataset)
+        return loss / len(dataset)
 
     # helper function for testing
     def test(self, dataset):
@@ -126,37 +121,38 @@ class SentimentTrainer(object):
         loss = 0
         predictions = torch.zeros(len(dataset))
         predictions = predictions
-        indices = torch.range(1,dataset.num_classes)
-        for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
+        indices = torch.range(1, dataset.num_classes)
+        for idx in tqdm(xrange(len(dataset)), desc='Testing epoch  ' + str(self.epoch) + ''):
             tree, sent, tag, rel, label = dataset[idx]
             input = Var(sent, volatile=True)
             tag_input = Var(tag, volatile=True)
             rel_input = Var(rel, volatile=True)
-            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain), volatile=True)
+            target = Var(map_label_to_target_sentiment(label, dataset.num_classes, fine_grain=self.args.fine_grain),
+                         volatile=True)
             if self.args.cuda:
                 input = input.cuda()
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
                 target = target.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            output, _ = self.model(tree, sent_emb, tag_emb, rel_emb) # size(1,5)
+            output, _ = self.model(tree, sent_emb, tag_emb, rel_emb)  # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
-            output[:,1] = -9999 # no need middle (neutral) value
+            output[:, 1] = -9999  # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             predictions[idx] = pred.data.cpu()[0][0]
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
-        return loss/len(dataset), predictions
+        return loss / len(dataset), predictions
 
 
 class Trainer(object):
     def __init__(self, args, model, criterion, optimizer):
         super(Trainer, self).__init__()
-        self.args       = args
-        self.model      = model
-        self.criterion  = criterion
-        self.optimizer  = optimizer
-        self.epoch      = 0
+        self.args = args
+        self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.epoch = 0
 
     # helper function for training
     def train(self, dataset):
@@ -164,39 +160,39 @@ class Trainer(object):
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
-        for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
-            ltree,lsent,rtree,rsent,label = dataset[indices[idx]]
+        for idx in tqdm(xrange(len(dataset)), desc='Training epoch ' + str(self.epoch + 1) + ''):
+            ltree, lsent, rtree, rsent, label = dataset[indices[idx]]
             linput, rinput = Var(lsent), Var(rsent)
-            target = Var(map_label_to_target(label,dataset.num_classes))
+            target = Var(map_label_to_target(label, dataset.num_classes))
             if self.args.cuda:
                 linput, rinput = linput.cuda(), rinput.cuda()
                 target = target.cuda()
-            output = self.model(ltree,linput,rtree,rinput)
+            output = self.model(ltree, linput, rtree, rinput)
             err = self.criterion(output, target)
             loss += err.data[0]
             err.backward()
             k += 1
-            if k%self.args.batchsize==0:
+            if k % self.args.batchsize == 0:
                 self.optimizer.step()
                 self.optimizer.zero_grad()
         self.epoch += 1
-        return loss/len(dataset)
+        return loss / len(dataset)
 
     # helper function for testing
     def test(self, dataset):
         self.model.eval()
         loss = 0
         predictions = torch.zeros(len(dataset))
-        indices = torch.range(1,dataset.num_classes)
-        for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
-            ltree,lsent,rtree,rsent,label = dataset[idx]
+        indices = torch.range(1, dataset.num_classes)
+        for idx in tqdm(xrange(len(dataset)), desc='Testing epoch  ' + str(self.epoch) + ''):
+            ltree, lsent, rtree, rsent, label = dataset[idx]
             linput, rinput = Var(lsent, volatile=True), Var(rsent, volatile=True)
-            target = Var(map_label_to_target(label,dataset.num_classes), volatile=True)
+            target = Var(map_label_to_target(label, dataset.num_classes), volatile=True)
             if self.args.cuda:
                 linput, rinput = linput.cuda(), rinput.cuda()
                 target = target.cuda()
-            output = self.model(ltree,linput,rtree,rinput)
+            output = self.model(ltree, linput, rtree, rinput)
             err = self.criterion(output, target)
             loss += err.data[0]
-            predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
-        return loss/len(dataset), predictions
+            predictions[idx] = torch.dot(indices, torch.exp(output.data.cpu()))
+        return loss / len(dataset), predictions

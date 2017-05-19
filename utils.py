@@ -1,7 +1,8 @@
 from __future__ import print_function
-
+import os.path
 import os, math
 import torch
+import matplotlib.pyplot as plt
 from tree import Tree
 from vocab import Vocab
 
@@ -103,3 +104,96 @@ def print_tree(vocab, tag_vocab, word, tree, level):
     print (line)
     for i in xrange(tree.num_children):
         print_tree(vocab, tag_vocab, word,tree.children[i], level+1)
+
+
+def mkdir_p(mypath):
+    '''Creates a directory. equivalent to using mkdir -p on the command line'''
+
+    from errno import EEXIST
+    from os import makedirs,path
+
+    try:
+        makedirs(mypath)
+    except OSError as exc: # Python >2.5
+        if exc.errno == EEXIST and path.isdir(mypath):
+            pass
+        else: raise
+
+def plot_accuracy(train_accuracy, dev_accuracy, args, path='./plot/'):
+    plt.subplots()
+    x_axis = range(len(train_accuracy))
+    plt.plot(x_axis, train_accuracy, 'r--',x_axis, dev_accuracy, 'b--')
+    plt.title('Accuracy on Train vs on Dev : ' + args.name)
+    out_dir = os.path.join(path, args.name)
+    mkdir_p(out_dir)
+    plt.savefig(os.path.join(out_dir, 'Accuracy' + '.png'))
+    plt.close()
+
+def plot_loss(train_loss, dev_loss, args, path='./plot/'):
+    plt.subplots()
+    x_axis = range(len(train_loss))
+    plt.plot(x_axis, train_loss, 'r--',x_axis, dev_loss, 'b--')
+    plt.title('Loss on Train vs on Dev : ' + args.name)
+    out_dir = os.path.join(path, args.name)
+    mkdir_p(out_dir)
+    plt.savefig(os.path.join(out_dir, 'Loss' + '.png'))
+    plt.close()
+
+def plot_grad_stat_from_start(grads, grads_ratio, args, path='./plot/'):
+    x_axis = range(len(grads))
+    plt.figure(1)
+
+    f, axarr = plt.subplots(2, sharex=True)
+    axarr[0].plot(x_axis, grads, 'b--')
+    axarr[0].set_title('Grad and Grad Ratio : ' + args.name)
+    axarr[1].plot(x_axis, grads_ratio, 'r--')
+
+    # plt.title('Grad and Grad Ratio : ' + args.name)
+    # plt.subplot(211)
+    # plt.plot(x_axis, grads, 'b--')
+    #
+    #
+    # plt.subplot(212)
+    # plt.plot(x_axis, grads_ratio, 'r--')
+    out_dir = os.path.join(path, args.name)
+
+
+    mkdir_p(out_dir)
+    plt.savefig(os.path.join(out_dir, 'Grad' + '.png'))
+    plt.close()
+
+def plot_grad_stat_epoch(grads, grads_ratio, args, epoch, path='./plot/'):
+    x_axis = range(len(grads))
+    plt.figure(1)
+
+    f, axarr = plt.subplots(2, sharex=True)
+    axarr[0].plot(x_axis, grads, 'b--')
+    axarr[0].set_title('Grad and Grad Ratio of epoch ' + str(epoch) + ' : ' + args.name)
+    axarr[1].plot(x_axis, grads_ratio, 'r--')
+
+    # plt.title('Grad and Grad Ratio of epoch ' + str(epoch) + ' : ' + args.name)
+    # plt.subplot(211)
+    # plt.plot(x_axis, grads, 'b--')
+    #
+    # plt.subplot(212)
+    # plt.plot(x_axis, grads_ratio, 'r--')
+
+    out_dir = os.path.join(path, args.name, 'Grad')
+
+
+    mkdir_p(out_dir)
+    plt.savefig(os.path.join(out_dir, str(epoch) + '.png'))
+    plt.close()
+
+def save_config(args, path='./plot/'):
+    out_dir = os.path.join(path, args.name)
+    mkdir_p(out_dir)
+    if not os.path.exists(os.path.join(out_dir, 'args.txt')):
+        f = open(os.path.join(out_dir, 'args.txt'), 'w')
+        f.write(str(args))
+        f.close()
+    else:
+        f = open(os.path.join(out_dir, 'args.txt'), 'a')
+        f.write('\n\n' + str(args))
+        f.close()
+        print ('args.txt file already exist, please, do manual check')
