@@ -292,8 +292,8 @@ def main():
         filename = args.name + '.pth'
         for epoch in range(args.epochs):
             train_loss = trainer.train(train_dataset)
-            train_loss, train_pred = trainer.test(train_dataset)
-            dev_loss, dev_pred = trainer.test(dev_dataset)
+            train_loss, train_pred, train_sub_metric = trainer.test(train_dataset)
+            dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)
             stat_train_loss.append(train_loss)
             stat_dev_loss.append(dev_loss)
 
@@ -304,6 +304,8 @@ def main():
 
             utils.plot_loss(stat_train_loss, stat_dev_loss, args)
             utils.plot_accuracy(stat_train_acc, stat_dev_acc, args)
+            utils.plot_subtree_metrics(dev_sub_metric, epoch, args, 'dev')
+            utils.plot_subtree_metrics(train_sub_metric, epoch, args, 'train')
 
             print('==> Train loss   : %f \t' % train_loss, end="")
             print('train percentage ' + str(train_acc))
@@ -319,8 +321,9 @@ def main():
         model = torch.load(args.saved + str(max_dev_epoch) + '_model_' + filename)
         embedding_model = torch.load(args.saved + str(max_dev_epoch) + '_embedding_' + filename)
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
-        test_loss, test_pred = trainer.test(test_dataset)
+        test_loss, test_pred, test_sub_metric = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        utils.plot_subtree_metrics(test_sub_metric, epoch, args, 'test')
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
         print('____________________' + str(args.name) + '___________________')
     else:
