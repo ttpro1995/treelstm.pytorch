@@ -136,6 +136,11 @@ def parse_args(type=0):
         parser.add_argument('--grad_clip', default=1000, type=float,
                             help='clipping gradient threshold (99999 for disable)')
 
+        parser.add_argument('--grad_noise', default=1, type=int,
+                            help='gradient noise on off (default 0 off)')
+        parser.add_argument('--grad_noise_n', default=0.01, type=float,
+                            help='grad noise n (in 0.01, 0.3, 1)')
+
         parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: random)')
         parser.add_argument('--fine_grain', default=False, type=bool,

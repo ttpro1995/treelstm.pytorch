@@ -86,6 +86,16 @@ class SentimentTrainer(object):
                 self.plot_tree_grad_param.append(tree_model_grad_param)
                 epoch_plot_tree_grad_param.append(tree_model_grad_param)
 
+                if self.args.grad_noise:
+                    # https://arxiv.org/pdf/1511.06807.pdf
+                    # grad noise reduce every epoch
+                    std = self.args.grad_noise_n / pow(1 + self.epoch, 0.55)
+                    for f in self.model.parameters():
+                        noise = torch.Tensor(f.grad.size()).normal_(mean=0, std=0.5)
+                        if self.args.cuda:
+                            noise = noise.cuda()
+                        f.grad.data.add_(noise)
+
 
                 if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
                     for f in self.embedding_model.tag_emb.parameters():  # train tag embedding
