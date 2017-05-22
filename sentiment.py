@@ -233,36 +233,67 @@ def main():
         assert args.rel_dim == 50
         embedding_model.rel_emb.state_dict()['weight'].copy_(rel_emb)
 
+
     # create trainer object for training and testing
     trainer  = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
 
-    mode = 'EXPERIMENT'
+    mode = args.mode
+    print ('Run mode '+args.mode)
     if mode == 'DEBUG':
+        stat_dev_loss = []
+        stat_dev_acc = []
+        stat_test_loss = []
+        stat_test_acc = []
         for epoch in range(args.epochs):
             dev_loss = trainer.train(dev_dataset)
             dev_loss, dev_pred = trainer.test(dev_dataset)
             test_loss, test_pred = trainer.test(test_dataset)
 
-            # TODO: torch.Tensor(dev_dataset.labels) turn label into tensor # done
+
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+
+            stat_dev_loss.append(dev_loss)
+            stat_dev_acc.append(dev_acc)
+            stat_test_acc.append(test_acc)
+            stat_test_loss.append(test_loss)
+
+            utils.plot_loss(stat_dev_loss, stat_test_loss, args)
+            utils.plot_accuracy(stat_dev_acc, stat_test_acc, args)
+
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
     elif mode == "EXPERIMENT":
         max_dev = 0
         max_dev_epoch = 0
+        stat_train_loss = []
+        stat_dev_loss = []
+        stat_train_acc = []
+        stat_dev_acc = []
+
         filename = args.name+'.pth'
         for epoch in range(args.epochs):
             train_loss             = trainer.train(train_dataset)
+            train_loss, train_pred = trainer.test(train_dataset)
             dev_loss, dev_pred     = trainer.test(dev_dataset)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+            train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
             print('==> Train loss   : %f \t' % train_loss, end="")
+            print('Epoch ', epoch, 'train percentage ', train_acc)
             print('Epoch ',epoch, 'dev percentage ',dev_acc )
-            torch.save(model, args.saved + str(epoch)+'_model_'+filename)
-            torch.save(embedding_model, args.saved + str(epoch)+'_embedding_'+filename)
+            stat_train_loss.append(train_loss)
+            stat_dev_loss.append(dev_loss)
+            stat_dev_acc.append(dev_acc)
+            stat_train_acc.append(train_acc)
+
+            utils.plot_loss(stat_train_loss, stat_dev_loss, args)
+            utils.plot_accuracy(stat_train_acc, stat_dev_acc, args)
+
             if dev_acc > max_dev:
                 max_dev = dev_acc
                 max_dev_epoch = epoch
+                torch.save(model, args.saved + str(epoch) + '_model_' + filename)
+                torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             gc.collect()
         print ('epoch ' + str(max_dev_epoch) +' dev score of ' + str(max_dev))
         print ('eva on test set ')
@@ -294,7 +325,9 @@ def main():
 if __name__ == "__main__":
     # log to console and file
     args = parse_args(type=1)
-    logger1 = log_util.create_logger(args.name, print_console=True)
+    utils.mkdir_p('plot')
+    log_dir = os.path.join('plot', args.name)
+    logger1 = log_util.create_logger(log_dir, print_console=True)
     logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)

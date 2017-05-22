@@ -4,6 +4,7 @@ from torch.autograd import Variable as Var
 from utils import map_label_to_target, map_label_to_target_sentiment
 import torch.nn.functional as F
 import gc
+import utils
 
 class SentimentTrainer(object):
     """
@@ -17,10 +18,13 @@ class SentimentTrainer(object):
         self.optimizer  = optimizer
         self.epoch      = 0
         self.embedding_model = embedding_model
+        self.plot_tree_grad = []
+        self.plot_tree_grad_param = []
+
 
 
     # helper function for training
-    def train(self, dataset):
+    def train(self, dataset, plot = True):
         self.model.train()
         self.embedding_model.train()
         self.embedding_model.zero_grad()
@@ -28,6 +32,8 @@ class SentimentTrainer(object):
         print ('Start training epoch ' + str(self.epoch))
 
         loss, k = 0.0, 0
+        epoch_plot_tree_grad = []
+        epoch_plot_tree_grad_param = []
         indices = torch.randperm(len(dataset))
         total_sample = len(dataset)
         done_sample = 0
@@ -53,7 +59,17 @@ class SentimentTrainer(object):
             done_sample += 1
             if done_sample % 1000 == 0:
                 print ('epoch '+ str(self.epoch) + ' '+ str(done_sample) + '/'+str(total_sample))
+
             if k==self.args.batchsize:
+                tree_model_param_norm = self.model.tree_module.getParameters().norm().data[0]
+                tree_model_grad_norm = self.model.tree_module.getGrad().norm().data[0]
+                tree_model_grad_param = tree_model_grad_norm / tree_model_param_norm
+
+                self.plot_tree_grad.append(tree_model_grad_norm)
+                epoch_plot_tree_grad.append(tree_model_grad_norm)
+                self.plot_tree_grad_param.append(tree_model_grad_param)
+                epoch_plot_tree_grad_param.append(tree_model_grad_param)
+
                 if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
                     for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
                         f.data.sub_(f.grad.data * self.args.tag_emblr)
@@ -70,6 +86,13 @@ class SentimentTrainer(object):
                 self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
                 k = 0
+
+        if plot:
+            utils.plot_grad_stat_epoch(epoch_plot_tree_grad, epoch_plot_tree_grad_param,
+                                       self.args,self.epoch)
+            utils.plot_grad_stat_from_start(self.plot_tree_grad, self.plot_tree_grad_param,
+                                        self.args)
+
         self.epoch += 1
         gc.collect()
         print ('Done training epoch ' + str(self.epoch))

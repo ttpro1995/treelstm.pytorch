@@ -164,7 +164,7 @@ class com_MLP(nn.Module):
 
         for i in range(self.num_layer): # add hidden layer into sequential module
             l = nn.Linear(const.mlp_com_hid_dim, const.mlp_com_hid_dim)
-            self.hid_layers.add_module(l)
+            self.hid_layers.add_module(str(i), l)
 
         if self.cudaFlag:
             self.l_word = self.l_word.cuda()
@@ -394,14 +394,23 @@ class TreeCompositionLSTM(nn.Module):
         :return: 1d tensor
         """
         params = []
-        for m in []:
-            # we do not get param of output module
-            l = list(m.parameters())
-            params.extend(l)
+
+        l = list(self.parameters())
+        params.extend(l)
 
         one_dim = [p.view(p.numel()) for p in params]
         params = F.torch.cat(one_dim)
-        return None
+        return params
+
+    def getGrad(self):
+        params = []
+
+        l = list(self.parameters())
+        params.extend(l)
+
+        one_dim = [p.grad.view(p.grad.numel()) for p in params]
+        grad = F.torch.cat(one_dim)
+        return grad
 
     def set_output_module(self, output_module):
         self.output_module = output_module

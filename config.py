@@ -78,9 +78,13 @@ def parse_args(type=0):
         parser.add_argument('--name', default='default_log',
                             help='log name (default: default_log)')
 
+        parser.add_argument('--mode', default='DEBUG',
+                            help='mode DEBUG, EXPERIMENT (default: DEBUG)')
+
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
         cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')
         cuda_parser.add_argument('--no-cuda', dest='cuda', action='store_false')
+
         parser.set_defaults(cuda=True)
 
         args = parser.parse_args()
