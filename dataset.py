@@ -6,6 +6,7 @@ import torch.utils.data as data
 from tree import Tree
 from vocab import Vocab
 import Constants
+from itertools import izip
 
 # Dataset class for SICK dataset
 class SICKDataset(data.Dataset):
@@ -116,6 +117,8 @@ class SSTDataset(data.Dataset):
                     new_sentences.append(temp_sentences[i])
                     new_tags.append(temp_tags[i])
                     new_rels.append(temp_rels[i])
+            for tr in new_trees:
+                tr.depth()
             self.trees = new_trees
             self.sentences = new_sentences
             self.tags = new_tags
@@ -270,17 +273,25 @@ class SSTConstituencyDataset(data.Dataset):
                     new_trees.append(temp_trees[i])
                     new_sentences.append(temp_sentences[i])
                     new_tags.append(temp_tags[i])
+
             self.trees = new_trees
             self.sentences = new_sentences
             self.tags = new_tags
         else:
             self.trees = temp_trees
             self.sentences = temp_sentences
+            self.tags = temp_tags
+
 
         for i in xrange(0, len(self.trees)):
             self.labels.append(self.trees[i].gold_label)
         self.labels = torch.Tensor(self.labels) # let labels be tensor
+
+        sorted_lists = sorted(izip(self.trees, self.sentences, self.tags, self.labels), key=lambda x: x[0].depth())
+        self.trees, self.sentences, self.tags, self.labels = [[x[i] for x in sorted_lists] for i in range(4)]
         self.size = len(self.trees)
+
+
 
     def __len__(self):
         return self.size
@@ -392,3 +403,164 @@ class SSTConstituencyDataset(data.Dataset):
             labels = map(lambda x: float(x), f.readlines())
             labels = torch.Tensor(labels)
         return labels
+
+class TreeDataset(data.Dataset):
+    def __init__(self):
+        self.trees = None
+        self.sentences = None
+        self.tags = None
+        self.labels = None
+        self.rels = None
+        self.tag_flag = False
+        self.rel_flag = False
+        self.size = 0
+
+    def __len__(self):
+        return self.size
+
+    def sort(self):
+        if self.tag_flag and not self.rel_flag:
+            sorted_lists = sorted(izip(self.trees, self.sentences, self.tags, self.labels), key=lambda x: x[0].depth())
+            self.trees, self.sentences, self.tags, self.labels = [[x[i] for x in sorted_lists] for i in range(4)]
+        elif self.tag_flag and self.rel_flag:
+            sorted_lists = sorted(izip(self.trees, self.sentences, self.tags, self.rels, self.labels), key=lambda x: x[0].depth())
+            self.trees, self.sentences, self.tags, self.rels, self.labels = [[x[i] for x in sorted_lists] for i in range(5)]
+        elif not self.tag_flag and self.rel_flag:
+            sorted_lists = sorted(izip(self.trees, self.sentences, self.rels, self.labels), key=lambda x: x[0].depth())
+            self.trees, self.sentences, self.rels, self.labels = [[x[i] for x in sorted_lists] for i in range(4)]
+        elif not self.tag_flag and not self.rel_flag:
+            sorted_lists = sorted(izip(self.trees, self.sentences, self.labels), key=lambda x: x[0].depth())
+            self.trees, self.sentences, self.labels = [[x[i] for x in sorted_lists] for i in range(3)]
+
+    def __getitem__(self, index):
+        # ltree = deepcopy(self.ltrees[index])
+        # rtree = deepcopy(self.rtrees[index])
+        # lsent = deepcopy(self.lsentences[index])
+        # rsent = deepcopy(self.rsentences[index])
+        # label = deepcopy(self.labels[index])
+
+        tree = deepcopy(self.trees[index])
+        sent = deepcopy(self.sentences[index])
+        label = deepcopy(self.labels[index])
+        if self.tag_flag:
+            tag = deepcopy(self.tags[index])
+        else:
+            tag = None
+        if self.rel_flag:
+            rel = deepcopy(self.rels[index])
+        else:
+            rel = None
+        return (tree, sent, tag, rel, label)
+
+def make_subtree(source_dataset, tag_flag, rel_flag):
+    """
+    Extract all subtree
+    :param source_dataset: 
+    :return: 
+    """
+    print ('get subtree')
+    tree, sent, tag, rel, label = source_dataset[0]
+    trees = []
+    sents = []
+    labels = []
+    rels = None
+    tags = None
+    if tag_flag:
+        tags = []
+    if rel_flag:
+        rels = []
+
+    def get_subtree(input_tree, trees, sents, tags, rels, labels):
+        """
+        recursion function to get all subtree and put into list
+        :param tree: 
+        :return: 
+        """
+        for child in input_tree.children:
+            if child.gold_label != None:
+                trees.append(deepcopy(child))
+                labels.append(deepcopy(child.gold_label))
+                # sent, rel, tag are access by tree.idx
+                # so we dublicate whole line
+                sents.append(deepcopy(sent))
+                if tag_flag:
+                    tags.append(deepcopy(tag))
+                if rel_flag:
+                    rels.append(deepcopy(rel))
+            get_subtree(child, trees, sents, tags, rels, labels)
+
+    for i in tqdm(xrange(source_dataset.size)):
+        tree, sent, tag, rel, label = source_dataset[i]
+
+        trees.append(deepcopy(tree))
+        sents.append(deepcopy(sent))
+        labels.append(deepcopy(tree.gold_label))
+        if tag_flag:
+            tags.append(deepcopy(tag))
+        if rel_flag:
+            rels.append(deepcopy(rel))
+        get_subtree(tree, trees, sents, tags, rels, labels)
+
+        # for child in tree.children:
+        #     if child.gold_label != None:
+        #         trees.append(deepcopy(child))
+        #         labels.append(deepcopy(child.gold_label))
+        #         # sent, rel, tag are access by tree.idx
+        #         # so we dublicate whole line
+        #         sents.append(deepcopy(sent))
+        #         if tag_flag:
+        #             tags.append(deepcopy(tag))
+        #         if rel_flag:
+        #             rels.append(deepcopy(rel))
+
+    new_dataset = TreeDataset()
+    new_dataset.trees = trees
+    new_dataset.sentences = sents
+    new_dataset.labels = labels
+    new_dataset.tags = tags
+    new_dataset.rels = rels
+    new_dataset.tag_flag = tag_flag
+    new_dataset.rel_flag = rel_flag
+    new_dataset.size = len(labels)
+    new_dataset.labels = torch.Tensor(labels)
+    new_dataset.sort()
+    calculate_partition_dataset_by_treedepth(new_dataset)
+    return new_dataset
+
+def calculate_partition_dataset_by_treedepth(dataset):
+    print ('partition')
+    cur_dep = 0
+    cur_idx = 0
+    part_idx = []
+    part_depth = []
+    part_idx.append(cur_idx)
+    for i in tqdm(xrange(dataset.size)):
+        tree = dataset[i][0].depth()
+        dep = tree.depth()
+        if cur_dep < dep:
+            part_depth.append(cur_dep) # dep of last part
+            cur_dep = dep # dep of new part
+            cur_idx = i # index of new part
+            part_idx.append(cur_idx) # start index of new part
+    part_depth.append(cur_dep)
+    dataset.part_depth = part_depth
+    dataset.part_index = part_idx
+    return part_depth, part_idx
+
+def partition_dataset(dataset, start, end):
+    trees, sents, tags, rels, labels = dataset[start: end]
+    new_dataset = TreeDataset()
+    new_dataset.trees = trees
+    new_dataset.sentences = sents
+    new_dataset.labels = labels
+    new_dataset.tags = tags
+    new_dataset.rels = rels
+    new_dataset.tag_flag = dataset.tag_flag
+    new_dataset.rel_flag = dataset.rel_flag
+    new_dataset.size = len(labels)
+    new_dataset.labels = torch.Tensor(labels)
+    return new_dataset
+
+
+
+

@@ -19,7 +19,7 @@ from model_c_com_lstm import TreeLSTMSentiment
 from tree import Tree
 from vocab import Vocab
 # DATASET CLASS FOR SICK DATASET
-from dataset import SSTConstituencyDataset
+from dataset import SSTConstituencyDataset, make_subtree, partition_dataset
 # METRICS CLASS FOR EVALUATION
 from metrics import Metrics
 # UTILITY FUNCTIONS
@@ -87,11 +87,15 @@ def main():
 
     # dev
     dev_file = os.path.join(args.data, 'sst_dev.pth')
-    if os.path.isfile(dev_file):
+    dev_subtree_file = os.path.join(args.data, 'sst_dev_sub.pth')
+    if os.path.isfile(dev_file) and os.path.isfile(dev_subtree_file):
         dev_dataset = torch.load(dev_file)
+        dev_subtree_dataset = torch.load(dev_subtree_file)
     else:
         dev_dataset = SSTConstituencyDataset(dev_dir, vocab, tagvocab, args.num_classes, args.fine_grain)
         torch.save(dev_dataset, dev_file)
+        dev_subtree_dataset = make_subtree(dev_dataset, tag_flag=True, rel_flag=False)
+        torch.save(dev_subtree_dataset, dev_subtree_file)
         is_preprocessing_data = True
 
     # test
@@ -253,6 +257,8 @@ def main():
     utils.save_config(args)
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
+            dev_dataset[0][0].depth()
+            # sorted_dev = sorted(dev_dataset, key=lambda x: x[0].depth())
             train_loss = trainer.train(dev_dataset)
             dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)
             test_loss, test_pred, test_sub_metric = trainer.test(test_dataset)
