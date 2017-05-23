@@ -179,65 +179,65 @@ class com_MLP(nn.Module):
             if self.rel_dim:
                 self.l_rel = self.l_rel.cuda()
 
-        def forward1(self, word, tag, rel=None, training=False):
-            h0 = F.tanh(self.l_word(word) + self.l_tag(tag) +self.l_rel(rel))
-            if self.num_layer == -1:
-                return h0
-            h = F.tanh(self.hid_layers(h0))
-            out = F.tanh(self.l_last(h))
-            return out
+        # def forward1(self, word, tag, rel=None, training=False):
+        #     h0 = F.tanh(self.l_word(word) + self.l_tag(tag) +self.l_rel(rel))
+        #     if self.num_layer == -1:
+        #         return h0
+        #     h = F.tanh(self.hid_layers(h0))
+        #     out = F.tanh(self.l_last(h))
+        #     return out
+        #
+        # def forward2(self, word, tag, rel=None, training=False):
+        #     h0 = F.tanh(self.l_word(word) + self.l_tag(tag))
+        #     if self.num_layer == -1:
+        #         return h0
+        #     h = F.tanh(self.hid_layers(h0))
+        #     out = F.tanh(self.l_last(h))
+        #     return out
+        #
+        # def forward3(self, word, tag, rel=None, training=False):
+        #     h0 = F.tanh(self.l_word(word) + self.l_rel(rel))
+        #     if self.num_layer == -1:
+        #         return h0
+        #     h = F.tanh(self.hid_layers(h0))
+        #     out = F.tanh(self.l_last(h))
+        #     return out
+        #
+        # def forward4(self, word, tag, rel=None, training=False):
+        #     h0 = F.tanh(self.l_word(word))
+        #     if self.num_layer == -1:
+        #         return h0
+        #     h = F.tanh(self.hid_layers(h0))
+        #     out = F.tanh(self.l_last(h))
+        #     return out
+        #
+        # forward_fn = None
+        # if self.tag_dim and self.rel_dim:
+        #     forward_fn = forward1
+        # elif self.tag_dim and not self.rel_dim:
+        #     forward_fn = forward2
+        # elif not self.tag_dim and self.rel_dim:
+        #     forward_fn = forward3
+        # elif not self.tag_dim and not self.rel_dim:
+        #     forward_fn = forward4
+        #
+        # self.forward = types.MethodType(forward_fn, self)
 
-        def forward2(self, word, tag, rel=None, training=False):
-            h0 = F.tanh(self.l_word(word) + self.l_tag(tag))
-            if self.num_layer == -1:
-                return h0
-            h = F.tanh(self.hid_layers(h0))
-            out = F.tanh(self.l_last(h))
-            return out
-
-        def forward3(self, word, tag, rel=None, training=False):
-            h0 = F.tanh(self.l_word(word) + self.l_rel(rel))
-            if self.num_layer == -1:
-                return h0
-            h = F.tanh(self.hid_layers(h0))
-            out = F.tanh(self.l_last(h))
-            return out
-
-        def forward4(self, word, tag, rel=None, training=False):
-            h0 = F.tanh(self.l_word(word))
-            if self.num_layer == -1:
-                return h0
-            h = F.tanh(self.hid_layers(h0))
-            out = F.tanh(self.l_last(h))
-            return out
-
-        forward_fn = None
+    def forward(self, word, tag, rel=None, training=False):
         if self.tag_dim and self.rel_dim:
-            forward_fn = forward1
+            h0 = F.tanh(self.l_word(word) + self.l_tag(tag) +self.l_rel(rel))
         elif self.tag_dim and not self.rel_dim:
-            forward_fn = forward2
+            h0 = F.tanh(self.l_word(word) + self.l_tag(tag))
         elif not self.tag_dim and self.rel_dim:
-            forward_fn = forward3
+            h0 = F.tanh(self.l_word(word) + self.l_rel(rel))
         elif not self.tag_dim and not self.rel_dim:
-            forward_fn = forward4
+            h0 = F.tanh(self.l_word(word))
 
-        self.forward = types.MethodType(forward_fn, self)
-
-    # def forward(self, word, tag, rel=None, training=False):
-    #     if self.tag_dim and self.rel_dim:
-    #         h0 = F.tanh(self.l_word(word) + self.l_tag(tag) +self.l_rel(rel))
-    #     elif self.tag_dim and not self.rel_dim:
-    #         h0 = F.tanh(self.l_word(word) + self.l_tag(tag))
-    #     elif not self.tag_dim and self.rel_dim:
-    #         h0 = F.tanh(self.l_word(word) + self.l_rel(rel))
-    #     elif not self.tag_dim and not self.rel_dim:
-    #         h0 = F.tanh(self.l_word(word))
-    #
-    #     if self.num_layer == -1:
-    #         return h0
-    #     h = F.tanh(self.hid_layers(h0))
-    #     out = F.tanh(self.l_last(h))
-    #     return out
+        if self.num_layer == -1:
+            return h0
+        h = F.tanh(self.hid_layers(h0))
+        out = F.tanh(self.l_last(h))
+        return out
 
 class CompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel, dropout=True):

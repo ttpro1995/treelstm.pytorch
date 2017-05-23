@@ -141,17 +141,20 @@ class SimilarityTrainer(object):
         self.plot_tree_grad_param = []
 
     # helper function for training
-    def train(self, dataset, plot = True):
+    def train(self, dataset, plot = True, DEBUG = False):
         self.model.train()
         self.embedding_model.train()
         self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
-        indices = torch.randperm(len(dataset))
+        n_dataset = len(dataset)
+        if DEBUG:
+            n_dataset = 5
+        indices = torch.randperm(n_dataset)
         epoch_plot_tree_grad = []
         epoch_plot_tree_grad_param = []
 
-        for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
+        for idx in tqdm(xrange(n_dataset),desc='Training epoch '+str(self.epoch+1)+''):
             ltree,lsent,rtree,rsent,ltag,rtag,lrel,rrel,label = dataset[indices[idx]]
             linput, rinput, ltag, rtag, lrel, rrel = Var(lsent), Var(rsent), Var(ltag), Var(rtag), Var(lrel), Var(rrel)
             target = Var(map_label_to_target(label,dataset.num_classes))
@@ -175,8 +178,18 @@ class SimilarityTrainer(object):
                 self.plot_tree_grad_param.append(tree_model_grad_param)
                 epoch_plot_tree_grad_param.append(tree_model_grad_param)
 
-                for f in self.embedding_model.parameters():
-                    f.data.sub_(f.grad.data * self.args.emblr)
+                if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
+                    for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
+                        f.data.sub_(f.grad.data * self.args.tag_emblr)
+
+                if self.args.rel_emblr > 0 and self.args.rel_dim > 0:
+                    for f in self.embedding_model.rel_emb.parameters():
+                        f.data.sub_(f.grad.data * self.args.rel_emblr)
+
+                if self.args.emblr > 0:
+                    for f in self.embedding_model.word_embedding.parameters():
+                        f.data.sub_(f.grad.data * self.args.emblr)
+
                 self.optimizer.step()
                 self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
@@ -187,19 +200,22 @@ class SimilarityTrainer(object):
                 utils.plot_grad_stat_from_start(self.plot_tree_grad, self.plot_tree_grad_param,
                                                 self.args)
         self.epoch += 1
-        return loss/len(dataset)
+        return loss/n_dataset
 
     # helper function for testing
-    def test(self, dataset):
+    def test(self, dataset, DEBUG = False):
         self.model.eval()
         loss = 0
-        predictions = torch.zeros(len(dataset))
+        n_dataset = len(dataset)
+        if DEBUG:
+            n_dataset = 5
+        predictions = torch.zeros(n_dataset)
         indices = torch.range(1,dataset.num_classes)
-        for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
+        for idx in tqdm(xrange(n_dataset),desc='Testing epoch  '+str(self.epoch)+''):
             # ltree,lsent,rtree,rsent,label = dataset[idx]
             # linput, rinput = Var(lsent, volatile=True), Var(rsent, volatile=True)
             # target = Var(map_label_to_target(label,dataset.num_classes), volatile=True)
-            ltree,lsent,rtree,rsent,ltag,rtag,lrel,rrel,label = dataset[indices[idx]]
+            ltree,lsent,rtree,rsent,ltag,rtag,lrel,rrel,label = dataset[idx]
             linput, rinput, ltag, rtag, lrel, rrel = Var(lsent, volatile=True), Var(rsent, volatile=True), Var(ltag, volatile=True), \
                                                      Var(rtag, volatile=True), Var(lrel, volatile=True), Var(rrel, volatile=True)
             target = Var(map_label_to_target(label,dataset.num_classes), volatile=True)
@@ -212,4 +228,4 @@ class SimilarityTrainer(object):
             err = self.criterion(output, target)
             loss += err.data[0]
             predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
-        return loss/len(dataset), predictions
+        return loss/n_dataset, predictions

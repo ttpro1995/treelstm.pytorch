@@ -225,15 +225,12 @@ def main():
         stat_test_loss = []
         stat_test_acc = []
         for epoch in range(args.epochs):
-            dev_loss = trainer.train(dev_dataset)
-            dev_loss, dev_pred = trainer.test(dev_dataset)
-            test_loss, test_pred = trainer.test(test_dataset)
+            dev_loss = trainer.train(dev_dataset, DEBUG=True)
+            dev_loss, dev_pred = trainer.test(dev_dataset, DEBUG=True)
+            test_loss, test_pred = trainer.test(test_dataset, DEBUG=True)
 
-            dev_pearson = metrics.pearson(dev_pred, dev_dataset.labels)
-            dev_mse = metrics.mse(dev_pred, dev_dataset.labels)
-
-            test_pearson = metrics.pearson(test_pred, test_dataset.labels)
-            test_mse = metrics.mse(test_pred, test_dataset.labels)
+            dev_pearson = metrics.pearson(dev_pred, dev_dataset.labels[0:5])
+            dev_mse = metrics.mse(dev_pred, dev_dataset.labels[0:5])
 
 
             stat_dev_loss.append(dev_loss)
@@ -246,7 +243,7 @@ def main():
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev MSE ', dev_mse)
     elif mode == "EXPERIMENT":
-        max_dev = 0
+        max_dev = -2
         max_dev_epoch = 0
         stat_train_loss = []
         stat_dev_loss = []
@@ -271,12 +268,13 @@ def main():
 
 
             utils.plot_loss(stat_train_loss, stat_dev_loss, args)
-            utils.plot_Pearson(stat_dev_acc)
+            utils.plot_Pearson(stat_dev_acc, args)
 
             if dev_acc > max_dev:
                 max_dev = dev_acc
                 max_dev_epoch = epoch
                 torch.save(model, args.saved + str(epoch) + '_model_' + filename)
+                print ('saved '+args.saved + str(epoch) + '_model_' + filename)
                 torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             gc.collect()
         print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
