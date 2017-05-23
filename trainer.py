@@ -77,18 +77,21 @@ class SentimentTrainer(object):
         return loss/len(dataset), predictions
 
 
-class Trainer(object):
-    def __init__(self, args, model, criterion, optimizer):
-        super(Trainer, self).__init__()
+class SimilarityTrainer(object):
+    def __init__(self, args, model, embedding_model, criterion, optimizer):
+        super(SimilarityTrainer, self).__init__()
         self.args       = args
         self.model      = model
         self.criterion  = criterion
         self.optimizer  = optimizer
         self.epoch      = 0
+        self.embedding_model = embedding_model
 
     # helper function for training
     def train(self, dataset):
         self.model.train()
+        self.embedding_model.train()
+        self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
@@ -99,14 +102,20 @@ class Trainer(object):
             if self.args.cuda:
                 linput, rinput = linput.cuda(), rinput.cuda()
                 target = target.cuda()
-            output = self.model(ltree,linput,rtree,rinput)
+            lemb = torch.unsqueeze(self.embedding_model(linput), 1)
+            remb = torch.unsqueeze(self.embedding_model(rinput), 1)
+            output = self.model(ltree, lemb, rtree, remb)
             err = self.criterion(output, target)
             loss += err.data[0]
             err.backward()
             k += 1
-            if k%self.args.batchsize==0:
+            if k==self.args.batchsize:
+                for f in self.embedding_model.parameters():
+                    f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
+                self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
+                k = 0
         self.epoch += 1
         return loss/len(dataset)
 
@@ -123,7 +132,9 @@ class Trainer(object):
             if self.args.cuda:
                 linput, rinput = linput.cuda(), rinput.cuda()
                 target = target.cuda()
-            output = self.model(ltree,linput,rtree,rinput)
+            lemb = torch.unsqueeze(self.embedding_model(linput), 1)
+            remb = torch.unsqueeze(self.embedding_model(rinput), 1)
+            output = self.model(ltree,lemb,rtree,remb)
             err = self.criterion(output, target)
             loss += err.data[0]
             predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))

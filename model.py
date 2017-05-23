@@ -286,6 +286,49 @@ class ChildSumTreeLSTM(nn.Module):
         return child_c, child_h
 
 ##############################################################################
+# similarity
+class SimilarityModule(nn.Module):
+    def __init__(self, cuda, mem_dim, hidden_dim, num_classes):
+        super(SimilarityModule, self).__init__()
+        super(SimilarityModule, self).__init__()
+        self.cudaFlag = cuda
+        self.mem_dim = mem_dim
+        self.hidden_dim = hidden_dim
+        self.num_classes = num_classes
+        self.wh = nn.Linear(2 * self.mem_dim, self.hidden_dim)
+        self.wp = nn.Linear(self.hidden_dim, self.num_classes)
+        self.logsoftmax = nn.LogSoftmax()
+        if self.cudaFlag:
+            self.wh = self.wh.cuda()
+            self.wp = self.wp.cuda()
+            self.logsoftmax = self.logsoftmax.cuda()
+
+    def forward(self, lvec, rvec):
+        mult_dist = torch.mul(lvec, rvec)
+        abs_dist = torch.abs(torch.add(lvec, -rvec))
+        vec_dist = torch.cat((mult_dist, abs_dist), 1)
+        out = F.sigmoid(self.wh(vec_dist))
+        out = self.logsoftmax(self.wp(out))
+        return out
+
+class SimilarityTreeLSTM(nn.Module):
+    def __init__(self, cuda, vocab_size, in_dim, mem_dim, hidden_dim, num_classes):
+        super(SimilarityTreeLSTM, self).__init__()
+        self.cudaFlag = cuda
+        self.childsumtreelstm = ChildSumTreeLSTM(cuda, in_dim, mem_dim, criterion=None)
+        self.similarity = SimilarityModule(cuda, mem_dim, hidden_dim, num_classes)
+
+    def forward(self, ltree, linputs, rtree, rinputs):
+        lstate, lloss = self.childsumtreelstm(ltree, linputs)
+        rstate, rloss = self.childsumtreelstm(rtree, rinputs)
+        lh = lstate[1]
+        rh = rstate[1]
+        output = self.similarity(lh, rh)
+        return output
+
+
+
+##############################################################################
 
 # output module
 class SentimentModule(nn.Module):

@@ -56,7 +56,7 @@ class SICKDataset(data.Dataset):
         root = None
         for i in xrange(1,len(parents)+1):
             #if not trees[i-1] and parents[i-1]!=-1:
-            if i-1 not in trees.keys() and parents[i-1]!=-1:
+            if i not in trees.keys() and parents[i-1]!=-1:
                 idx = i
                 prev = None
                 while True:
@@ -66,11 +66,11 @@ class SICKDataset(data.Dataset):
                     tree = Tree()
                     if prev is not None:
                         tree.add_child(prev)
-                    trees[idx-1] = tree
-                    tree.idx = idx-1
+                    trees[idx] = tree
+                    tree.idx = idx
                     #if trees[parent-1] is not None:
-                    if parent-1 in trees.keys():
-                        trees[parent-1].add_child(tree)
+                    if parent in trees.keys():
+                        trees[parent].add_child(tree)
                         break
                     elif parent==0:
                         root = tree
@@ -86,7 +86,7 @@ class SICKDataset(data.Dataset):
             labels = torch.Tensor(labels)
         return labels
 
-# Dataset class for SICK dataset
+# Dataset class for sst dataset
 class SSTDataset(data.Dataset):
     def __init__(self, path, vocab, num_classes, fine_grain, model_name):
         super(SSTDataset, self).__init__()

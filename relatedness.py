@@ -24,14 +24,22 @@ from utils import load_word_vectors, build_vocab
 # CONFIG PARSER
 from config import parse_args
 # TRAIN AND TEST HELPER FUNCTIONS
-from trainer import Trainer
+from trainer import SimilarityTrainer
 
 # MAIN BLOCK
 def main():
     global args
-    args = parse_args()
-    args.input_dim, args.mem_dim = 300, 150
-    args.hidden_dim, args.num_classes = 50, 5
+    args = parse_args(type=10)
+    args.input_dim = 300
+    args.hidden_dim = 50
+    # args.input_dim, args.mem_dim = 300, 150
+    # args.hidden_dim, args.num_classes = 50, 5
+    if args.model_name == 'dependency':
+        args.mem_dim = 150
+    elif args.model_name == 'constituency':
+        args.mem_dim = 142
+    args.num_classes = 5
+
     args.cuda = args.cuda and torch.cuda.is_available()
     print(args)
     # torch.manual_seed(args.seed)
@@ -46,8 +54,8 @@ def main():
     token_files_a = [os.path.join(split,'a.toks') for split in [train_dir,dev_dir,test_dir]]
     token_files_b = [os.path.join(split,'b.toks') for split in [train_dir,dev_dir,test_dir]]
     token_files = token_files_a+token_files_b
-    sick_vocab_file = os.path.join(args.data,'sick.vocab')
-    build_vocab(token_files, sick_vocab_file)
+    sick_vocab_file = os.path.join(args.data,'vocab-cased.txt')
+    # build_vocab(token_files, sick_vocab_file)
 
     # get vocab object from vocab file previously written
     vocab = Vocab(filename=sick_vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
@@ -82,6 +90,10 @@ def main():
                 args.input_dim, args.mem_dim,
                 args.hidden_dim, args.num_classes
             )
+    embedding_model = nn.Embedding(vocab.size(), args.input_dim)
+    if args.cuda:
+        embedding_model = embedding_model.cuda()
+
     criterion = nn.KLDivLoss()
     if args.cuda:
         model.cuda(), criterion.cuda()
@@ -111,20 +123,21 @@ def main():
     # plug these into embedding matrix inside model
     if args.cuda:
         emb = emb.cuda()
-    model.childsumtreelstm.emb.state_dict()['weight'].copy_(emb)
+    embedding_model.state_dict()['weight'].copy_(emb)
+    # model.childsumtreelstm.emb.state_dict()['weight'].copy_(emb)
 
     # create trainer object for training and testing
-    trainer     = Trainer(args, model, criterion, optimizer)
+    trainer     = SimilarityTrainer(args, model, embedding_model, criterion, optimizer)
 
     for epoch in range(args.epochs):
-        train_loss             = trainer.train(train_dataset)
-        train_loss, train_pred = trainer.test(train_dataset)
+        train_loss             = trainer.train(dev_dataset)
+        # train_loss, train_pred = trainer.test(dev_dataset)
         dev_loss, dev_pred     = trainer.test(dev_dataset)
         test_loss, test_pred   = trainer.test(test_dataset)
 
         print('==> Train loss   : %f \t' % train_loss, end="")
-        print('Train Pearson    : %f \t' % metrics.pearson(train_pred,train_dataset.labels), end="")
-        print('Train MSE        : %f \t' % metrics.mse(train_pred,train_dataset.labels), end="\n")
+        # print('Train Pearson    : %f \t' % metrics.pearson(train_pred,train_dataset.labels), end="")
+        # print('Train MSE        : %f \t' % metrics.mse(train_pred,train_dataset.labels), end="\n")
         print('==> Dev loss     : %f \t' % dev_loss, end="")
         print('Dev Pearson      : %f \t' % metrics.pearson(dev_pred,dev_dataset.labels), end="")
         print('Dev MSE          : %f \t' % metrics.mse(dev_pred,dev_dataset.labels), end="\n")
