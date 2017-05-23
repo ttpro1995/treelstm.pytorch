@@ -130,14 +130,14 @@ def main():
     trainer     = SimilarityTrainer(args, model, embedding_model, criterion, optimizer)
 
     for epoch in range(args.epochs):
-        train_loss             = trainer.train(dev_dataset)
-        # train_loss, train_pred = trainer.test(dev_dataset)
+        train_loss             = trainer.train(train_dataset)
+        train_loss, train_pred = trainer.test(train_dataset)
         dev_loss, dev_pred     = trainer.test(dev_dataset)
         test_loss, test_pred   = trainer.test(test_dataset)
 
         print('==> Train loss   : %f \t' % train_loss, end="")
-        # print('Train Pearson    : %f \t' % metrics.pearson(train_pred,train_dataset.labels), end="")
-        # print('Train MSE        : %f \t' % metrics.mse(train_pred,train_dataset.labels), end="\n")
+        print('Train Pearson    : %f \t' % metrics.pearson(train_pred,train_dataset.labels), end="")
+        print('Train MSE        : %f \t' % metrics.mse(train_pred,train_dataset.labels), end="\n")
         print('==> Dev loss     : %f \t' % dev_loss, end="")
         print('Dev Pearson      : %f \t' % metrics.pearson(dev_pred,dev_dataset.labels), end="")
         print('Dev MSE          : %f \t' % metrics.mse(dev_pred,dev_dataset.labels), end="\n")
