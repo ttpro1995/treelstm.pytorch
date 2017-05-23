@@ -52,7 +52,7 @@ def build_vocab(filenames, vocabfile):
 
 # mapping from scalar to vector
 def map_label_to_target(label,num_classes):
-    target = torch.Tensor(1,num_classes)
+    target = torch.zeros(1,num_classes)
     ceil = int(math.ceil(label))
     floor = int(math.floor(label))
     if ceil==floor:
@@ -102,6 +102,26 @@ def plot_accuracy(train_accuracy, dev_accuracy, args, path='./plot/'):
     out_dir = os.path.join(path, args.name)
     mkdir_p(out_dir)
     plt.savefig(os.path.join(out_dir, 'Accuracy' + '.png'))
+    plt.close()
+
+def plot_MSE(train_accuracy, dev_accuracy, args, path='./plot/'):
+    plt.subplots()
+    x_axis = range(len(train_accuracy))
+    plt.plot(x_axis, train_accuracy, 'r--',x_axis, dev_accuracy, 'b--')
+    plt.title('MSE on Train vs on Dev : ' + args.name)
+    out_dir = os.path.join(path, args.name)
+    mkdir_p(out_dir)
+    plt.savefig(os.path.join(out_dir, 'Accuracy' + '.png'))
+    plt.close()
+
+def plot_Pearson(train_accuracy, args, path='./plot/'):
+    plt.subplots()
+    x_axis = range(len(train_accuracy))
+    plt.plot(x_axis, train_accuracy, 'r--')
+    plt.title('Pearson: ' + args.name)
+    out_dir = os.path.join(path, args.name)
+    mkdir_p(out_dir)
+    plt.savefig(os.path.join(out_dir, 'Pearson' + '.png'))
     plt.close()
 
 def plot_loss(train_loss, dev_loss, args, path='./plot/'):

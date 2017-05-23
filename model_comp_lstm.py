@@ -499,7 +499,7 @@ class TreeCompositionLSTM(nn.Module):
         k = h
         q = c
         return k, q
-
+#############################################
 class TreeCompositionLSTMSentiment(nn.Module):
     def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion, dropout=True):
         super(TreeCompositionLSTMSentiment, self).__init__()
@@ -516,3 +516,43 @@ class TreeCompositionLSTMSentiment(nn.Module):
         tree_state, loss = self.tree_module(tree, sent_emb, tag_emb, rel_emb, training)
         output = tree.output
         return output, loss
+
+###################################################
+class SimilarityModule(nn.Module):
+    def __init__(self, cuda, mem_dim, hidden_dim, num_classes):
+        super(SimilarityModule, self).__init__()
+        super(SimilarityModule, self).__init__()
+        self.cudaFlag = cuda
+        self.mem_dim = mem_dim
+        self.hidden_dim = hidden_dim
+        self.num_classes = num_classes
+        self.wh = nn.Linear(2 * self.mem_dim, self.hidden_dim)
+        self.wp = nn.Linear(self.hidden_dim, self.num_classes)
+        self.logsoftmax = nn.LogSoftmax()
+        if self.cudaFlag:
+            self.wh = self.wh.cuda()
+            self.wp = self.wp.cuda()
+            self.logsoftmax = self.logsoftmax.cuda()
+
+    def forward(self, lvec, rvec):
+        mult_dist = torch.mul(lvec, rvec)
+        abs_dist = torch.abs(torch.add(lvec, -rvec))
+        vec_dist = torch.cat((mult_dist, abs_dist), 1)
+        out = F.sigmoid(self.wh(vec_dist))
+        out = self.logsoftmax(self.wp(out))
+        return out
+
+class SimilarityTreeLSTM(nn.Module):
+    def __init__(self, cuda, vocab_size, word_dim, tag_dim, rel_dim, mem_dim, hidden_dim, num_classes):
+        super(SimilarityTreeLSTM, self).__init__()
+        self.cudaFlag = cuda
+        self.tree_module = TreeCompositionLSTM(cuda, word_dim, tag_dim, rel_dim, mem_dim, None, criterion=None)
+        self.similarity = SimilarityModule(cuda, mem_dim, hidden_dim, num_classes)
+
+    def forward(self, ltree, linputs, ltag, lrel, rtree, rinputs, rtag, rrel):
+        lstate, lloss = self.tree_module(ltree, linputs, ltag, lrel)
+        rstate, rloss = self.tree_module(rtree, rinputs, rtag, rrel)
+        lh = lstate[0]
+        rh = rstate[0]
+        output = self.similarity(lh, rh)
+        return output

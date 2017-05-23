@@ -31,13 +31,14 @@ class SentimentTrainer(object):
         self.optimizer.zero_grad()
         print ('Start training epoch ' + str(self.epoch))
 
-        loss, k = 0.0, 0
         epoch_plot_tree_grad = []
         epoch_plot_tree_grad_param = []
+
+        loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
         total_sample = len(dataset)
         done_sample = 0
-        for idx in xrange(len(dataset)):
+        for idx in tqdm(xrange(len(dataset))):
             tree, sent, tag, rel, label = dataset[indices[idx]]
             input = Var(sent)
             tag_input = Var(tag)
@@ -127,37 +128,64 @@ class SentimentTrainer(object):
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
         return loss/len(dataset), predictions
 
-
-class Trainer(object):
-    def __init__(self, args, model, criterion, optimizer):
-        super(Trainer, self).__init__()
+class SimilarityTrainer(object):
+    def __init__(self, args, model, embedding_model, criterion, optimizer):
+        super(SimilarityTrainer, self).__init__()
         self.args       = args
         self.model      = model
         self.criterion  = criterion
         self.optimizer  = optimizer
         self.epoch      = 0
+        self.embedding_model = embedding_model
+        self.plot_tree_grad = []
+        self.plot_tree_grad_param = []
 
     # helper function for training
-    def train(self, dataset):
+    def train(self, dataset, plot = True):
         self.model.train()
+        self.embedding_model.train()
+        self.embedding_model.zero_grad()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
         indices = torch.randperm(len(dataset))
+        epoch_plot_tree_grad = []
+        epoch_plot_tree_grad_param = []
+
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
-            ltree,lsent,rtree,rsent,label = dataset[indices[idx]]
-            linput, rinput = Var(lsent), Var(rsent)
+            ltree,lsent,rtree,rsent,ltag,rtag,lrel,rrel,label = dataset[indices[idx]]
+            linput, rinput, ltag, rtag, lrel, rrel = Var(lsent), Var(rsent), Var(ltag), Var(rtag), Var(lrel), Var(rrel)
             target = Var(map_label_to_target(label,dataset.num_classes))
             if self.args.cuda:
-                linput, rinput = linput.cuda(), rinput.cuda()
+                linput, rinput, ltag, rtag, lrel, rrel = linput.cuda(), rinput.cuda(), ltag.cuda(), rtag.cuda(), lrel.cuda(), rrel.cuda()
                 target = target.cuda()
-            output = self.model(ltree,linput,rtree,rinput)
+            lemb, ltagemb, lrelemb = self.embedding_model(linput, ltag, lrel)
+            remb, rtagemb, rrelemb = self.embedding_model(rinput, rtag, rrel)
+            output = self.model(ltree, lemb, ltagemb, lrelemb, rtree, remb, rtagemb, rrelemb)
             err = self.criterion(output, target)
             loss += err.data[0]
             err.backward()
             k += 1
-            if k%self.args.batchsize==0:
+            if k==self.args.batchsize:
+                tree_model_param_norm = self.model.tree_module.getParameters().norm().data[0]
+                tree_model_grad_norm = self.model.tree_module.getGrad().norm().data[0]
+                tree_model_grad_param = tree_model_grad_norm / tree_model_param_norm
+
+                self.plot_tree_grad.append(tree_model_grad_norm)
+                epoch_plot_tree_grad.append(tree_model_grad_norm)
+                self.plot_tree_grad_param.append(tree_model_grad_param)
+                epoch_plot_tree_grad_param.append(tree_model_grad_param)
+
+                for f in self.embedding_model.parameters():
+                    f.data.sub_(f.grad.data * self.args.emblr)
                 self.optimizer.step()
+                self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()
+                k = 0
+            if plot:
+                utils.plot_grad_stat_epoch(epoch_plot_tree_grad, epoch_plot_tree_grad_param,
+                                           self.args, self.epoch)
+                utils.plot_grad_stat_from_start(self.plot_tree_grad, self.plot_tree_grad_param,
+                                                self.args)
         self.epoch += 1
         return loss/len(dataset)
 
@@ -168,13 +196,19 @@ class Trainer(object):
         predictions = torch.zeros(len(dataset))
         indices = torch.range(1,dataset.num_classes)
         for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
-            ltree,lsent,rtree,rsent,label = dataset[idx]
-            linput, rinput = Var(lsent, volatile=True), Var(rsent, volatile=True)
+            # ltree,lsent,rtree,rsent,label = dataset[idx]
+            # linput, rinput = Var(lsent, volatile=True), Var(rsent, volatile=True)
+            # target = Var(map_label_to_target(label,dataset.num_classes), volatile=True)
+            ltree,lsent,rtree,rsent,ltag,rtag,lrel,rrel,label = dataset[indices[idx]]
+            linput, rinput, ltag, rtag, lrel, rrel = Var(lsent, volatile=True), Var(rsent, volatile=True), Var(ltag, volatile=True), \
+                                                     Var(rtag, volatile=True), Var(lrel, volatile=True), Var(rrel, volatile=True)
             target = Var(map_label_to_target(label,dataset.num_classes), volatile=True)
             if self.args.cuda:
-                linput, rinput = linput.cuda(), rinput.cuda()
+                linput, rinput, ltag, rtag, lrel, rrel = linput.cuda(), rinput.cuda(), ltag.cuda(), rtag.cuda(), lrel.cuda(), rrel.cuda()
                 target = target.cuda()
-            output = self.model(ltree,linput,rtree,rinput)
+            lemb, ltagemb, lrelemb = self.embedding_model(linput, ltag, lrel)
+            remb, rtagemb, rrelemb = self.embedding_model(rinput, rtag, rrel)
+            output = self.model(ltree, lemb, ltagemb, lrelemb, rtree, remb, rtagemb, rrelemb)
             err = self.criterion(output, target)
             loss += err.data[0]
             predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
