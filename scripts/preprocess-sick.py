@@ -18,9 +18,12 @@ def dependency_parse(filepath, cp='', tokenize=True):
     tokpath = os.path.join(dirpath, filepre + '.toks')
     parentpath = os.path.join(dirpath, filepre + '.parents')
     relpath =  os.path.join(dirpath, filepre + '.rels')
+    tagpath = os.path.join(dirpath, filepre + '.tags')
     tokenize_flag = '-tokenize - ' if tokenize else ''
-    cmd = ('java -cp %s DependencyParse -tokpath %s -parentpath %s -relpath %s %s < %s'
-        % (cp, tokpath, parentpath, relpath, tokenize_flag, filepath))
+    cmd = ('java -cp %s DependencyParse -tokpath %s -parentpath %s -tagpath %s -relpath %s %s < %s'
+        % (cp, tokpath, parentpath, tagpath, relpath, tokenize_flag, filepath))
+    print ('dependency parse cmd')
+    print (cmd)
     os.system(cmd)
 
 def constituency_parse(filepath, cp='', tokenize=True):
@@ -29,9 +32,12 @@ def constituency_parse(filepath, cp='', tokenize=True):
     tokpath = os.path.join(dirpath, filepre + '.toks')
     parentpath = os.path.join(dirpath, filepre + '.cparents')
     tokenize_flag = '-tokenize - ' if tokenize else ''
-    cmd = ('java -cp %s ConstituencyParse -tokpath %s -parentpath %s %s < %s'
+    cmd = ('java -cp %s ConstituencyParseOriginal -tokpath %s -parentpath %s %s < %s'
         % (cp, tokpath, parentpath, tokenize_flag, filepath))
+    print ('constituency parse cmd')
+    print (cmd)
     os.system(cmd)
+
 
 def build_vocab(filepaths, dst_path, lowercase=True):
     vocab = set()
@@ -82,8 +88,8 @@ if __name__ == '__main__':
     # java classpath for calling Stanford parser
     classpath = ':'.join([
         lib_dir,
-        os.path.join(lib_dir, 'stanford-parser/stanford-parser.jar'),
-        os.path.join(lib_dir, 'stanford-parser/stanford-parser-3.5.1-models.jar')])
+        os.path.join(lib_dir, 'stanford-corenlp-3.7.0.jar'),
+        os.path.join(lib_dir, 'stanford-corenlp-3.7.0-models.jar')])
 
     # split into separate files
     split(os.path.join(sick_dir, 'SICK_train.txt'), train_dir)

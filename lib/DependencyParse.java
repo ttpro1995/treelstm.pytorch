@@ -21,19 +21,19 @@ import java.util.Scanner;
 public class DependencyParse {
 
   public static final String TAGGER_MODEL = "stanford-tagger/models/english-left3words-distsim.tagger";
-  public static final String PARSER_MODEL = "edu/stanford/nlp/models/parser/nndep/english_SD.gz";
 
   public static void main(String[] args) throws Exception {
     File folder = new File(".");
     File[] listOfFiles = folder.listFiles();
 
-    for (int i = 0; i < listOfFiles.length; i++) {
-      if (listOfFiles[i].isFile()) {
-        System.out.println("File " + listOfFiles[i].getName());
-      } else if (listOfFiles[i].isDirectory()) {
-        System.out.println("Directory " + listOfFiles[i].getName());
-      }
-    }      
+    // For debug purpose
+//    for (int i = 0; i < listOfFiles.length; i++) {
+//      if (listOfFiles[i].isFile()) {
+//        System.out.println("File " + listOfFiles[i].getName());
+//      } else if (listOfFiles[i].isDirectory()) {
+//        System.out.println("Directory " + listOfFiles[i].getName());
+//      }
+//    }      
       
       
     Properties props = StringUtils.argsToProperties(args);
@@ -55,6 +55,13 @@ public class DependencyParse {
     String parentPath = props.getProperty("parentpath");
     String relPath = props.getProperty("relpath");
     String tagPath = props.getProperty("tagpath");
+    System.out.println("path property__ ");
+    System.out.println(tokPath);
+    System.out.println(parentPath);
+    System.out.println(relPath);
+    System.out.println(tagPath);
+    System.out.println("__path property__ ");
+    
 
     BufferedWriter tokWriter = new BufferedWriter(new FileWriter(tokPath));
     BufferedWriter parentWriter = new BufferedWriter(new FileWriter(parentPath));
@@ -62,15 +69,17 @@ public class DependencyParse {
     BufferedWriter tagWriter = new BufferedWriter(new FileWriter(tagPath));
 
     MaxentTagger tagger = new MaxentTagger(TAGGER_MODEL);
-    DependencyParser parser = DependencyParser.loadFromModelFile(PARSER_MODEL);
+    DependencyParser parser = DependencyParser.loadFromModelFile(DependencyParser.DEFAULT_MODEL);
     
     System.out.println("done init, start scanning ");
     
     Scanner stdin = new Scanner(System.in);
     int count = 0;
     long start = System.currentTimeMillis();
+//    while (stdin.hasNextLine() && count < 2) {
     while (stdin.hasNextLine()) {
       String line = stdin.nextLine();
+//      System.out.println(line);
       List<HasWord> tokens = new ArrayList<>();
       if (tokenize) {
         PTBTokenizer<Word> tokenizer = new PTBTokenizer(
@@ -84,7 +93,7 @@ public class DependencyParse {
         }
       }
       
-      
+//      System.out.println("done token ");
 
       List<TaggedWord> tagged = tagger.tagSentence(tokens);
       
@@ -105,7 +114,7 @@ public class DependencyParse {
         parents[i] = -1;
       }
       
-      
+//      System.out.println("done token 2");
 
       String[] relns = new String[len];
       for (TypedDependency td : tdl) {
@@ -116,7 +125,7 @@ public class DependencyParse {
         parents[child - 1] = parent;
       }
       
-      
+//      System.out.println("done token 3 ");
       
       // print tokens
       sb = new StringBuilder();
@@ -136,7 +145,7 @@ public class DependencyParse {
       sb.append('\n');
       tokWriter.write(sb.toString());
       
-      
+//      System.out.println("done print token ");
 
       // print parent pointers
       sb = new StringBuilder();
@@ -164,7 +173,7 @@ public class DependencyParse {
         System.err.printf("Parsed %d lines (%.2fs)\n", count, elapsed);
       }
       
-      
+//      System.out.println("end of while loop ");
     }
 
     long totalTimeMillis = System.currentTimeMillis() - start;

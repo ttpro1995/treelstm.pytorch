@@ -362,6 +362,7 @@ def dependency_parse(filepath, cp='', tokenize=True):
     tokenize_flag = '-tokenize - ' if tokenize else ''
     cmd = ('java -cp %s DependencyParse -tokpath %s -parentpath %s -relpath %s -tagpath %s %s < %s'
         % (cp, tokpath, parentpath, relpath, tagpath, tokenize_flag, filepath))
+    print ('dependency parse cmd')
     print (cmd)
     os.system(cmd)
 
@@ -375,6 +376,7 @@ def constituency_parse(filepath, cp='', tokenize=True):
     tokenize_flag = '-tokenize - ' if tokenize else ''
     cmd = ('java -cp %s ConstituencyParse -tokpath %s -parentpath %s -tagpath %s %s < %s'
         % (cp, tokpath, parentpath, tagpath, tokenize_flag, filepath))
+    print ('dependency parse cmd')
     print (cmd)
     os.system(cmd)
 
@@ -399,8 +401,8 @@ if __name__ == '__main__':
     # produce dependency parses
     classpath = ':'.join([
         lib_dir,
-        os.path.join(lib_dir, 'stanford-parser/stanford-parser.jar'),
-        os.path.join(lib_dir, 'stanford-parser/stanford-parser-3.5.1-models.jar')])
+        os.path.join(lib_dir, 'stanford-corenlp-3.7.0.jar'),
+        os.path.join(lib_dir, 'stanford-corenlp-3.7.0-models.jar')])
     for filepath in sent_paths:
         dependency_parse(filepath, cp=classpath, tokenize=False)
         constituency_parse(filepath, cp=classpath, tokenize=False)
