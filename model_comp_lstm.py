@@ -8,6 +8,7 @@ import const
 from model import SentimentModule
 import config
 from embedding_model import EmbeddingModel
+import types
 
 
 # TODO: Add drop out and attention
@@ -114,7 +115,9 @@ class Attention_MLP(nn.Module):
 
     def forward(self, word, tag, rel=None, training=False):
         if rel is None and self.rel_dim:
-            rel = self.rel_self
+            rel = Var(self.rel_self)
+            if self.cudaFlag:
+                rel = rel.cuda(0)
 
         if self.dropout:
             word = F.dropout(word, p=const.p_dropout_input, training=training)
@@ -151,7 +154,6 @@ class com_MLP(nn.Module):
         self.hid_dim = const.mlp_com_hid_dim
         self.out_dim = const.mlp_com_out_dim
         self.num_layer = const.mlp_num_hid_layer
-        self.hid_layers= nn.Sequential() # list of hidden layer (empty if hidden layer = 0)
         self.l_word = nn.Linear(word_dim, const.mlp_com_hid_dim)
 
 
@@ -159,8 +161,9 @@ class com_MLP(nn.Module):
             self.l_tag = nn.Linear(tag_dim, const.mlp_com_hid_dim)
         if self.rel_dim:
             self.l_rel = nn.Linear(rel_dim, const.mlp_com_hid_dim)
-
-        self.l_last = nn.Linear(const.mlp_com_hid_dim, const.mlp_com_out_dim)
+        if self.num_layer != -1:
+            self.l_last = nn.Linear(const.mlp_com_hid_dim, const.mlp_com_out_dim)
+            self.hid_layers = nn.Sequential()  # list of hidden layer (empty if hidden layer = 0)
 
         for i in range(self.num_layer): # add hidden layer into sequential module
             l = nn.Linear(const.mlp_com_hid_dim, const.mlp_com_hid_dim)
@@ -168,27 +171,73 @@ class com_MLP(nn.Module):
 
         if self.cudaFlag:
             self.l_word = self.l_word.cuda()
-            self.hid_layers = self.hid_layers.cuda()
+            if self.num_layer != -1:
+                self.hid_layers = self.hid_layers.cuda()
+                self.l_last = self.l_last.cuda()
             if self.tag_dim:
                 self.l_tag = self.l_tag.cuda()
             if self.rel_dim:
-                self.l_rel = self.l_rel.cuda()            
+                self.l_rel = self.l_rel.cuda()
 
-    def forward(self, word, tag, rel=None, training=False):
-        if self.tag_dim and self.rel_dim:
+        def forward1(self, word, tag, rel=None, training=False):
             h0 = F.tanh(self.l_word(word) + self.l_tag(tag) +self.l_rel(rel))
-        elif self.tag_dim and not self.rel_dim:
-            h0 = F.tanh(self.l_word(word) + self.l_tag(tag))
-        elif not self.tag_dim and self.rel_dim:
-            h0 = F.tanh(self.l_word(word) + self.l_rel(rel))
-        elif not self.tag_dim and not self.rel_dim:
-            h0 = F.tanh(self.l_word(word))
+            if self.num_layer == -1:
+                return h0
+            h = F.tanh(self.hid_layers(h0))
+            out = F.tanh(self.l_last(h))
+            return out
 
-        if self.num_layer == -1:
-            return h0
-        h = F.tanh(self.hid_layers(h0))
-        out = F.tanh(self.l_last(h))
-        return out
+        def forward2(self, word, tag, rel=None, training=False):
+            h0 = F.tanh(self.l_word(word) + self.l_tag(tag))
+            if self.num_layer == -1:
+                return h0
+            h = F.tanh(self.hid_layers(h0))
+            out = F.tanh(self.l_last(h))
+            return out
+
+        def forward3(self, word, tag, rel=None, training=False):
+            h0 = F.tanh(self.l_word(word) + self.l_rel(rel))
+            if self.num_layer == -1:
+                return h0
+            h = F.tanh(self.hid_layers(h0))
+            out = F.tanh(self.l_last(h))
+            return out
+
+        def forward4(self, word, tag, rel=None, training=False):
+            h0 = F.tanh(self.l_word(word))
+            if self.num_layer == -1:
+                return h0
+            h = F.tanh(self.hid_layers(h0))
+            out = F.tanh(self.l_last(h))
+            return out
+
+        forward_fn = None
+        if self.tag_dim and self.rel_dim:
+            forward_fn = forward1
+        elif self.tag_dim and not self.rel_dim:
+            forward_fn = forward2
+        elif not self.tag_dim and self.rel_dim:
+            forward_fn = forward3
+        elif not self.tag_dim and not self.rel_dim:
+            forward_fn = forward4
+
+        self.forward = types.MethodType(forward_fn, self)
+
+    # def forward(self, word, tag, rel=None, training=False):
+    #     if self.tag_dim and self.rel_dim:
+    #         h0 = F.tanh(self.l_word(word) + self.l_tag(tag) +self.l_rel(rel))
+    #     elif self.tag_dim and not self.rel_dim:
+    #         h0 = F.tanh(self.l_word(word) + self.l_tag(tag))
+    #     elif not self.tag_dim and self.rel_dim:
+    #         h0 = F.tanh(self.l_word(word) + self.l_rel(rel))
+    #     elif not self.tag_dim and not self.rel_dim:
+    #         h0 = F.tanh(self.l_word(word))
+    #
+    #     if self.num_layer == -1:
+    #         return h0
+    #     h = F.tanh(self.hid_layers(h0))
+    #     out = F.tanh(self.l_last(h))
+    #     return out
 
 class CompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel, dropout=True):
@@ -202,47 +251,17 @@ class CompositionLSTM(nn.Module):
         self.rel_self = rel_sel
         self.dropout = dropout
 
-        # self.fdown_word = nn.Linear(word_dim, mem_dim)
-        # if self.tag_dim:
-        #     self.fdown_tag = nn.Linear(tag_dim, mem_dim)
-        # if self.rel_dim:
-        #     self.fdown_rel = nn.Linear(rel_dim, mem_dim)
-
         self.fdown_k = nn.Linear(mem_dim, mem_dim)
         self.fdown_h = nn.Linear(mem_dim, mem_dim)
-
-        # self.fleft_word = nn.Linear(word_dim, mem_dim)
-        # if self.tag_dim:
-        #     self.fleft_tag = nn.Linear(tag_dim, mem_dim)
-        # if self.rel_dim:
-        #     self.fleft_rel = nn.Linear(rel_dim, mem_dim)
 
         self.fleft_k = nn.Linear(mem_dim, mem_dim)
         self.fleft_h = nn.Linear(mem_dim, mem_dim)
 
-        # self.o_word = nn.Linear(word_dim, mem_dim)
-        # if self.tag_dim:
-        #     self.o_tag = nn.Linear(tag_dim, mem_dim)
-        # if self.rel_dim:
-        #     self.o_rel = nn.Linear(rel_dim, mem_dim)
-
         self.o_k = nn.Linear(mem_dim, mem_dim)
         self.o_h = nn.Linear(mem_dim, mem_dim)
 
-        # self.u_word = nn.Linear(word_dim, mem_dim)
-        # if self.tag_dim:
-        #     self.u_tag = nn.Linear(tag_dim, mem_dim)
-        # if self.rel_dim:
-        #     self.u_rel = nn.Linear(rel_dim, mem_dim)
-
         self.u_k = nn.Linear(mem_dim, mem_dim)
         self.u_h = nn.Linear(mem_dim, mem_dim)
-
-        # self.i_word = nn.Linear(word_dim, mem_dim)
-        # if self.tag_dim:
-        #     self.i_tag = nn.Linear(tag_dim, mem_dim)
-        # if self.rel_dim:
-        #     self.i_rel = nn.Linear(rel_dim, mem_dim)
 
         self.i_k = nn.Linear(mem_dim, mem_dim)
         self.i_h = nn.Linear(mem_dim, mem_dim)
@@ -262,43 +281,19 @@ class CompositionLSTM(nn.Module):
             self.i_mlp = com_MLP(cuda, word_dim, tag_dim, rel_dim)
 
         if self.cudaFlag:
-            # self.fdown_word = self.fdown_word.cuda()
-            # if self.tag_dim:
-            #     self.fdown_tag = self.fdown_tag.cuda()
-            # if self.rel_dim:
-            #     self.fdown_rel = self.fdown_rel.cuda()
+
             self.fdown_k = self.fdown_k.cuda()
             self.fdown_h = self.fdown_h.cuda()
 
-            # self.fleft_word = self.fleft_word.cuda()
-            # if self.tag_dim:
-            #     self.fleft_tag = self.fleft_tag.cuda()
-            # if self.rel_dim:
-            #     self.fleft_rel = self.fleft_rel.cuda()
             self.fleft_k = self.fleft_k.cuda()
             self.fleft_h = self.fleft_h.cuda()
 
-            # self.o_word = self.o_word.cuda()
-            # if self.tag_dim:
-            #     self.o_tag = self.o_tag.cuda()
-            # if self.rel_dim:
-            #     self.o_rel = self.o_rel.cuda()
             self.o_k = self.o_k.cuda()
             self.o_h = self.o_h.cuda()
 
-            # self.u_word = self.u_word.cuda()
-            # if self.tag_dim:
-            #     self.u_tag = self.u_tag.cuda()
-            # if self.rel_dim:
-            #     self.u_rel = self.u_rel.cuda()
             self.u_k = self.u_k.cuda()
             self.u_h = self.u_h.cuda()
 
-            # self.i_word = self.i_word.cuda()
-            # if self.tag_dim:
-            #     self.i_tag = self.i_tag.cuda()
-            # if self.rel_dim:
-            #     self.i_rel = self.i_rel.cuda()
             self.i_k = self.i_k.cuda()
             self.i_h = self.i_h.cuda()
 
@@ -307,7 +302,9 @@ class CompositionLSTM(nn.Module):
     def forward(self, word, tag, rel=None, k=None, q=None, h_prev=None, c_prev=None, training=False):
         if rel is None and self.rel_dim:
             # rel = Var(torch.zeros(1, self.rel_dim), requires_grad=False)
-            rel = self.rel_self
+            rel = Var(self.rel_self)
+            if self.cudaFlag:
+                rel = rel.cuda()
 
         if h_prev is None:
             h_prev = Var(torch.zeros(1, self.mem_dim), requires_grad=False)
@@ -371,9 +368,7 @@ class TreeCompositionLSTM(nn.Module):
         self.dropout = dropout
         self.attention = attention
         if rel_dim and not rel_self:
-            rel_self = Var(torch.Tensor(1, self.rel_dim).normal_(-0.05, 0.05))
-            if self.cudaFlag:
-                rel_self = rel_self.cuda()
+            rel_self = torch.Tensor(1, self.rel_dim).normal_(-0.05, 0.05)
         self.rel_self = rel_self
 
         self.composition_lstm = CompositionLSTM(cuda, word_dim, tag_dim, rel_dim, mem_dim, self.rel_self,
@@ -504,56 +499,6 @@ class TreeCompositionLSTM(nn.Module):
         k = h
         q = c
         return k, q
-
-        # def get_child_state(self, tree, word_emb, tag_emb, rel_emb):
-        #     """
-        #     Get children word, tag, rel
-        #     :param tree: tree we need to get child
-        #     :param rels_emb (tensor):
-        #     :return:
-        #     """
-        #     if tree.num_children == 0:
-        #         # words = Var(torch.zeros(1, 1, self.in_dim))
-        #         # if self.tag_dim:
-        #         #     tags = Var(torch.zeros(1, 1, self.tag_dim))
-        #         # if self.rel_dim:
-        #         #     rels = Var(torch.zeros(1, 1, self.rel_dim))
-        #         k = Var(torch.zeros(1, 1, self.mem_dim))
-        #         q = Var(torch.zeros(1, 1, self.mem_dim))
-        #
-        #         if self.cudaFlag:
-        #             # words = words.cuda()
-        #             # tags = tags.cuda()
-        #             # rels = rels.cuda()
-        #             k = k.cuda()
-        #             q = q.cuda()
-        #
-        #
-        #     else:
-        #         # words = Var(torch.Tensor(tree.num_children, 1, self.in_dim))
-        #         # rels = Var(torch.Tensor(tree.num_children, 1, self.rel_dim))
-        #         # tags = Var(torch.Tensor(tree.num_children, 1, self.tag_dim))
-        #
-        #
-        #
-        #         if self.cudaFlag:
-        #             # words = words.cuda()
-        #             # rels = rels.cuda()
-        #             # tags = tags.cuda()
-        #             k = k.cuda()
-        #             q = q.cuda()
-        #
-        #
-        #         for idx in xrange(tree.num_children):
-        #             # words[idx] = word_emb[tree.children[idx].idx - 1]
-        #             # rels[idx] = rel_emb[tree.children[idx].idx - 1]
-        #             # tags[idx] = tag_emb[tree.children[idx].idx - 1]
-        #
-        #             k[idx] = tree.children[idx].state[0]
-        #             q[idx] = tree.children[idx].state[1]
-        #     # return words, tags, rels, k, q
-        #     return k, q
-
 
 class TreeCompositionLSTMSentiment(nn.Module):
     def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion, dropout=True):

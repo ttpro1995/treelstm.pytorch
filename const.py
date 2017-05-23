@@ -1,7 +1,7 @@
 attention_hid_dim = 150
 mlp_com_hid_dim = 150
 mlp_com_out_dim = 150
-mlp_num_hid_layer = 1
+mlp_num_hid_layer = -1
 p_dropout_input = 0.5
 p_dropout_memory = 0.1
 attention = False
