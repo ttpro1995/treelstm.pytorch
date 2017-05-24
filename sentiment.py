@@ -321,11 +321,11 @@ def main():
             print('==> Train loss   : %f \t' % train_loss, end="")
             print('train percentage ' + str(train_acc))
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
-            torch.save(model, args.saved + str(epoch) + '_model_' + filename)
-            torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             if dev_acc > max_dev:
                 max_dev = dev_acc
                 max_dev_epoch = epoch
+                torch.save(model, args.saved + str(epoch) + '_model_' + filename)
+                torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             gc.collect()
         print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
         print('eva on test set ')
