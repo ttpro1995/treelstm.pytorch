@@ -58,8 +58,8 @@ class SentimentTrainer(object):
             #params = None
             #params_norm = None
             done_sample += 1
-            if done_sample % 1000 == 0:
-                print ('epoch '+ str(self.epoch) + ' '+ str(done_sample) + '/'+str(total_sample))
+            # if done_sample % 1000 == 0:
+            #     print ('epoch '+ str(self.epoch) + ' '+ str(done_sample) + '/'+str(total_sample))
 
             if k==self.args.batchsize:
                 tree_model_param_norm = self.model.tree_module.getParameters().norm().data[0]
@@ -163,7 +163,7 @@ class SimilarityTrainer(object):
                 target = target.cuda()
             lemb, ltagemb, lrelemb = self.embedding_model(linput, ltag, lrel)
             remb, rtagemb, rrelemb = self.embedding_model(rinput, rtag, rrel)
-            output = self.model(ltree, lemb, ltagemb, lrelemb, rtree, remb, rtagemb, rrelemb)
+            output = self.model.forward(ltree, lemb, ltagemb, lrelemb, rtree, remb, rtagemb, rrelemb)
             err = self.criterion(output, target)
             loss += err.data[0]
             err.backward()

@@ -22,6 +22,8 @@ class ChildGRU(nn.Module):
         self.rel_self = rel_sel
         self.dropout = dropout
         self.gru_cell = nn.GRUCell(word_dim+tag_dim+rel_dim+mem_dim, mem_dim)
+        if self.cudaFlag:
+            self.gru_cell = self.gru_cell.cuda()
 
         if dropout:
             self.input_dropout = nn.Dropout(p=const.p_dropout_input)

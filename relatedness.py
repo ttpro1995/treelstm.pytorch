@@ -11,7 +11,7 @@ from torch.autograd import Variable as Var
 # IMPORT CONSTANTS
 import Constants
 # NEURAL NETWORK MODULES/LAYERS
-from model_comp_lstm import SimilarityTreeLSTM
+from model_com_gru import SimilarityTreeGRU
 from embedding_model import EmbeddingModel
 # DATA HANDLING CLASSES
 from tree import Tree
@@ -111,7 +111,7 @@ def main():
     print('==> Size of test data    : %d ' % len(test_dataset))
 
     # initialize model, criterion/loss_function, optimizer
-    model = SimilarityTreeLSTM(
+    model = SimilarityTreeGRU(
                 args.cuda, vocab.size(),
                 args.word_dim, args.tag_dim,
                 args.rel_dim, args.mem_dim, args.hidden_dim, 5
