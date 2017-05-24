@@ -27,7 +27,7 @@ def parse_args(type=0):
         args = parser.parse_args()
         return args
     elif type == 10:
-        parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analyusis on Dependency Trees')
+        parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Similarity on Dependency Trees')
         parser.add_argument('--data', default='data/sick/',
                             help='path to dataset')
         parser.add_argument('--saved', default='saved_model/',
@@ -98,7 +98,7 @@ def parse_args(type=0):
                             help='path to dataset')
         parser.add_argument('--saved', default='saved_model/',
                             help='path to save location')
-        parser.add_argument('--glove', default='data/glove/',
+        parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
         parser.add_argument('--tag_glove', default=0, type=int,
                             help='use tag embedding pretrained by glove')

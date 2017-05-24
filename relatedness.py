@@ -28,6 +28,8 @@ from config import parse_args
 from trainer import SimilarityTrainer
 import utils
 import gc
+from meowlogtool import log_util
+import sys
 
 # MAIN BLOCK
 def main():
@@ -129,7 +131,7 @@ def main():
 
     # for words common to dataset vocab and GLOVE, use GLOVE vectors
     # for other words in dataset vocab, use random normal vectors
-    emb_file = os.path.join(args.data, 'sst_embed.pth')
+    emb_file = os.path.join(args.data, 'sick_embed.pth')
     if os.path.isfile(emb_file):
         emb = torch.load(emb_file)
     else:
@@ -290,4 +292,14 @@ def main():
         print('____________________' + str(args.name) + '___________________')
 
 if __name__ == "__main__":
+    # log to console and file
+    args = parse_args(type=1)
+    utils.mkdir_p('plot')
+    log_dir = os.path.join('plot', args.name)
+    logger1 = log_util.create_logger(log_dir, print_console=True)
+    logger1.info("LOG_FILE") # log using loggerba
+    # attach log to stdout (print function)
+    s1 = log_util.StreamToLogger(logger1)
+    sys.stdout = s1
+
     main()

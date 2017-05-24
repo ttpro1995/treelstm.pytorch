@@ -239,6 +239,8 @@ class com_MLP(nn.Module):
         out = F.tanh(self.l_last(h))
         return out
 
+
+
 class CompositionLSTM(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel, dropout=True):
         super(CompositionLSTM, self).__init__()
