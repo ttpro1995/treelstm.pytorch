@@ -12,3 +12,4 @@ def show_const():
     print('vertical_dropout = ' + str(vertical_dropout))
     print('word_dropout = ' + str(word_dropout))
     print('pos_tag_dropout = ' + str(pos_tag_dropout))
+

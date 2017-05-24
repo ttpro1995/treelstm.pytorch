@@ -89,18 +89,18 @@ def main():
 
     # dev
     dev_file = os.path.join(args.data, 'sst_dev.pth')
-    if args.mode == "BABY":
-        dev_subtree_file = os.path.join(args.data, 'sst_dev_sub.pth')
-    if os.path.isfile(dev_file) and os.path.isfile(dev_subtree_file):
+    # if args.mode == "BABY":
+    #     dev_subtree_file = os.path.join(args.data, 'sst_dev_sub.pth')
+    if os.path.isfile(dev_file): # and os.path.isfile(dev_subtree_file):
         dev_dataset = torch.load(dev_file)
-        if args.mode == "BABY":
-            dev_subtree_dataset = torch.load(dev_subtree_file)
+        # if args.mode == "BABY":
+        #     dev_subtree_dataset = torch.load(dev_subtree_file)
     else:
         dev_dataset = SSTConstituencyDataset(dev_dir, vocab, tagvocab, args.num_classes, args.fine_grain)
         torch.save(dev_dataset, dev_file)
-        if args.mode == "BABY":
-            dev_subtree_dataset = make_subtree(dev_dataset, tag_flag=True, rel_flag=False)
-            torch.save(dev_subtree_dataset, dev_subtree_file)
+        # if args.mode == "BABY":
+        #     dev_subtree_dataset = make_subtree(dev_dataset, tag_flag=True, rel_flag=False)
+        #     torch.save(dev_subtree_dataset, dev_subtree_file)
         is_preprocessing_data = True
 
     # test
@@ -338,30 +338,33 @@ def main():
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
         print('____________________' + str(args.name) + '___________________')
     elif mode == "BABY":
-        part_index = dev_subtree_dataset.part_index
-        part_index.append(dev_subtree_dataset.size)
+        # part_index = dev_subtree_dataset.part_index
+        # part_index.append(dev_subtree_dataset.size)
         depth_group = [5, 10, 15, 25]
         start_depth = 0
         for i in  range(len(depth_group)): # 0 5 10 15 20 25
             depth = depth_group[i]
             print ('depth %d and below' %(depth))
-            start_idx = part_index[start_depth] # start from
+            # start_idx = part_index[start_depth] # start from
             print('start %d end %d depth' % (start_depth, depth))
-            end_idx = part_index[depth + 1]
-            # from start depth to depth is [start_depth_index, depth+1 index)
-            start_depth = depth + 1 # for next iteration
-
-            print('start index %d end index %d ' %(start_idx, end_idx))
-            part_dev_dataset = partition_dataset(dev_subtree_dataset, start_idx, end_idx)
+            # end_idx = part_index[depth + 1]
+            # # from start depth to depth is [start_depth_index, depth+1 index)
+            #
+            # print('start index %d end index %d ' %(start_idx, end_idx))
+            # part_dev_dataset = partition_dataset(dev_subtree_dataset, start_idx, end_idx)
             n_iter = 0
             max_dev_score = 0
             while n_iter < args.patient: # drop and move to next len when there is no improve
                 print ('iter %d'%(n_iter))
                 # sorted_dev = sorted(dev_dataset, key=lambda x: x[0].depth())
                 train_loss = trainer.train(train_dataset, max_depth=depth)
-                dev_loss, dev_pred, dev_sub_metric = trainer.test(part_dev_dataset, allow_neutral=True)
+                dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset, allow_neutral=True)
 
-                dev_acc = metrics.sentiment_accuracy_score(dev_pred, part_dev_dataset.labels)
+                dev_sub_metric.printAccDepth(start_depth, depth)
+                _, dev_acc = dev_sub_metric.getAccDepth(start_depth, depth)
+                full_dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+                print('dev percentage %f from depth %d to %d'% (dev_acc, start_depth, depth))
+                print('Dev acc on full dev dataset %f' % (full_dev_acc))
                 if dev_acc > max_dev_score:
                     max_dev_score = dev_acc
                     n_iter = 0
@@ -371,7 +374,8 @@ def main():
                 print('==> Train loss   : %f \t' % train_loss, end="")
                 print('==> Dev loss   : %f \t' % dev_loss, end="")
                 utils.plot_subtree_metrics(dev_sub_metric, trainer.epoch, args, 'dev')
-                print('dev percentage ', dev_acc)
+
+            start_depth = depth + 1  # for next iteration
         dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)
         dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
         utils.plot_subtree_metrics(dev_sub_metric, trainer.epoch, args, 'dev_final')
@@ -401,8 +405,12 @@ def main():
 if __name__ == "__main__":
     # log to console and file
     args = parse_args(type=Constants.TYPE_constituency)
-    logger1 = log_util.create_logger(args.name, print_console=True)
-    logger1.info("LOG_FILE")  # log using loggerba
+    utils.mkdir_p('plot')
+    log_dir = os.path.join('plot', args.name)
+    utils.mkdir_p(log_dir) # maker folder
+    log_dir = os.path.join(log_dir, args.name) # plot/experiment name/experiment_name.log
+    logger1 = log_util.create_logger(log_dir, print_console=True)
+    logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)
     sys.stdout = s1
