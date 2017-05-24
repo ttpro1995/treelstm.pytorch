@@ -286,12 +286,12 @@ class SSTConstituencyDataset(data.Dataset):
 
         for i in xrange(0, len(self.trees)):
             self.labels.append(self.trees[i].gold_label)
-        self.labels = torch.Tensor(self.labels) # let labels be tensor
+
 
         sorted_lists = sorted(izip(self.trees, self.sentences, self.tags, self.labels), key=lambda x: x[0].depth())
         self.trees, self.sentences, self.tags, self.labels = [[x[i] for x in sorted_lists] for i in range(4)]
         self.size = len(self.trees)
-
+        self.labels = torch.Tensor(self.labels)  # let labels be tensor
 
 
     def __len__(self):

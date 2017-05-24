@@ -340,12 +340,11 @@ def main():
     elif mode == "BABY":
         part_index = dev_subtree_dataset.part_index
         part_index.append(dev_subtree_dataset.size)
-        depth_group = [5, 10, 15, 20, 25]
+        depth_group = [5, 10, 15, 25]
         start_depth = 0
         for i in  range(len(depth_group)): # 0 5 10 15 20 25
             depth = depth_group[i]
             print ('depth %d and below' %(depth))
-            depth_max_acc = 0
             start_idx = part_index[start_depth] # start from
             print('start %d end %d depth' % (start_depth, depth))
             end_idx = part_index[depth + 1]
@@ -354,27 +353,33 @@ def main():
 
             print('start index %d end index %d ' %(start_idx, end_idx))
             part_dev_dataset = partition_dataset(dev_subtree_dataset, start_idx, end_idx)
-            for epoch in range(args.epochs):
-                print ('epoch %d' %epoch)
+            n_iter = 0
+            max_dev_score = 0
+            while n_iter < args.patient: # drop and move to next len when there is no improve
+                print ('iter %d'%(n_iter))
                 # sorted_dev = sorted(dev_dataset, key=lambda x: x[0].depth())
                 train_loss = trainer.train(dev_dataset, max_depth=depth)
                 dev_loss, dev_pred, dev_sub_metric = trainer.test(part_dev_dataset, allow_neutral=True)
 
                 dev_acc = metrics.sentiment_accuracy_score(dev_pred, part_dev_dataset.labels)
-                if dev_acc > depth_max_acc:
-                    depth_max_acc = dev_acc
+                if dev_acc > max_dev_score:
+                    max_dev_score = dev_acc
+                    n_iter = 0
+                    print ('Update max dev score %f'%(max_dev_score))
+                else:
+                    n_iter += 1
                 print('==> Train loss   : %f \t' % train_loss, end="")
                 print('==> Dev loss   : %f \t' % dev_loss, end="")
-                utils.plot_subtree_metrics(dev_sub_metric, epoch, args, 'dev')
-                print('Epoch ', epoch + 1, 'dev percentage ', dev_acc)
+                utils.plot_subtree_metrics(dev_sub_metric, trainer.epoch, args, 'dev')
+                print('dev percentage ', dev_acc)
         dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)
         dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
-        utils.plot_subtree_metrics(dev_sub_metric, 10, args, 'dev')
+        utils.plot_subtree_metrics(dev_sub_metric, trainer.epoch, args, 'dev_final')
         print("Baby final dev acc %f" % (dev_acc))
 
         test_loss, test_pred, test_sub_metric = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
-        utils.plot_subtree_metrics(test_sub_metric, 10, args, 'test')
+        utils.plot_subtree_metrics(test_sub_metric, trainer.epoch, args, 'test')
         print ("Baby final test acc %f" %(test_acc))
     else:
         print('DA FUCK IS THIS MODE : ' + str(args.mode))

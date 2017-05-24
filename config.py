@@ -85,7 +85,7 @@ def parse_args(type=0):
                             help='path to save location')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
-        parser.add_argument('--tag_glove', default=1, type=int,
+        parser.add_argument('--tag_glove', default=0, type=int,
                             help='use tag embedding pretrained by glove')
         parser.add_argument('--rel_glove', default=False, type=bool,
                             help='use rel embedding pretrained by glove')
@@ -176,6 +176,8 @@ def parse_args(type=0):
         parser.add_argument('--name', default='default_log',
                             help='log name (default: default_log)')
         parser.add_argument('--mode', default='DEBUG',
+                            help='mode DEBUG, EXPERIMENT (default: DEBUG)')
+        parser.add_argument('--patient', default=1, type = int,
                             help='mode DEBUG, EXPERIMENT (default: DEBUG)')
 
     cuda_parser = parser.add_mutually_exclusive_group(required=False)
