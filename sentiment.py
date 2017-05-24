@@ -358,7 +358,7 @@ def main():
             while n_iter < args.patient: # drop and move to next len when there is no improve
                 print ('iter %d'%(n_iter))
                 # sorted_dev = sorted(dev_dataset, key=lambda x: x[0].depth())
-                train_loss = trainer.train(dev_dataset, max_depth=depth)
+                train_loss = trainer.train(train_dataset, max_depth=depth)
                 dev_loss, dev_pred, dev_sub_metric = trainer.test(part_dev_dataset, allow_neutral=True)
 
                 dev_acc = metrics.sentiment_accuracy_score(dev_pred, part_dev_dataset.labels)
