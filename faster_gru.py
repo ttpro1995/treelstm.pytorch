@@ -114,11 +114,14 @@ class FasterGRUTree(nn.Module):
                 if self.cudaFlag:
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
+            val, pred = torch.max(output, 1)
+            correct = pred.data[0][0] == tree.gold_label
             if subtree_metric and not training and tree.parent and tree.gold_label:
                 # measue subtree metrics
-                val, pred = torch.max(output, 1)
-                correct = pred.data[0][0] == tree.gold_label
                 subtree_metric.count(correct, tree.count_leaf())
+            if subtree_metric and not training and tree.gold_label:
+                subtree_metric.count_depth(correct, tree.depth())
+
 
         return tree.state, loss
 
