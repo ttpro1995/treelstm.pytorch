@@ -7,7 +7,9 @@ import gc
 import config
 import os.path
 import utils
+import metrics
 from metrics import SubtreeMetric
+from dataset import partition_dataset
 
 import matplotlib.ticker as ticker
 import numpy as np
@@ -36,7 +38,14 @@ class SentimentTrainer(object):
 
 
     # helper function for training
-    def train(self, dataset):
+    def train(self, dataset, plot = True, max_depth = None):
+        """
+        
+        :param dataset: dataset
+        :param plot: make plot ?
+        :param max_depth: for 
+        :return: 
+        """
         self.model.train()
         self.embedding_model.train()
         self.embedding_model.zero_grad()
@@ -61,7 +70,7 @@ class SentimentTrainer(object):
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
             sent_emb, tag_emb, _ = self.embedding_model(input, tag_input, rel_input)
-            output, err = self.model.forward(tree, sent_emb, tag_emb, training=True)
+            output, err = self.model.forward(tree, sent_emb, tag_emb, training=True, max_depth=max_depth)
             # params = self.model.get_tree_parameters()
             # params_norm = params.norm()
             err = err / self.args.batchsize  # + 0.5*self.args.reg*params_norm*params_norm # custom bias
@@ -91,7 +100,7 @@ class SentimentTrainer(object):
                     # grad noise reduce every epoch
                     std = self.args.grad_noise_n / pow(1 + self.epoch, 0.55)
                     for f in self.model.parameters():
-                        noise = torch.Tensor(f.grad.size()).normal_(mean=0, std=0.5)
+                        noise = torch.Tensor(f.grad.size()).normal_(mean=0, std=std)
                         if self.args.cuda:
                             noise = noise.cuda()
                         f.grad.data.add_(noise)
@@ -115,9 +124,11 @@ class SentimentTrainer(object):
                 k = 0
         if self.scheduler:
             self.scheduler.step(loss / len(dataset), self.epoch)
-        utils.plot_grad_stat_epoch(epoch_plot_tree_grad, epoch_plot_tree_grad_param,
-                                   self.args,self.epoch)
-        utils.plot_grad_stat_from_start(self.plot_tree_grad, self.plot_tree_grad_param,
+
+        if plot:
+            utils.plot_grad_stat_epoch(epoch_plot_tree_grad, epoch_plot_tree_grad_param,
+                                       self.args,self.epoch)
+            utils.plot_grad_stat_from_start(self.plot_tree_grad, self.plot_tree_grad_param,
                                         self.args)
 
         self.epoch += 1
@@ -133,13 +144,12 @@ class SentimentTrainer(object):
         loss = 0
         predictions = torch.zeros(len(dataset))
         predictions = predictions
-        indices = torch.range(1, dataset.num_classes)
         for idx in tqdm(xrange(len(dataset)), desc='Testing epoch  ' + str(self.epoch) + ''):
             tree, sent, tag, rel, label = dataset[idx]
             input = Var(sent, volatile=True)
             tag_input = Var(tag, volatile=True)
             rel_input = Var(rel, volatile=True)
-            target = Var(map_label_to_target_sentiment(label, dataset.num_classes, fine_grain=self.args.fine_grain),
+            target = Var(map_label_to_target_sentiment(label),
                          volatile=True)
             if self.args.cuda:
                 input = input.cuda()
@@ -156,6 +166,48 @@ class SentimentTrainer(object):
             predictions[idx] = pred.data.cpu()[0][0]
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
         return loss / len(dataset), predictions, subtree_metric
+
+    # def baby_step_train(self, train_dataset, dev_dataset, patient):
+    #     """
+    #     Train on group of partition
+    #     (group of sample have similar depth)
+    #     :param dataset: full dataset with subtree
+    #     :param patient: move to next group if no improve
+    #     :return:
+    #     """
+    #
+    #     # def chunks(l, n):
+    #     #     """Yield successive n-sized chunks from l.
+    #     #     :param l: list
+    #     #     :param n: element per chunks
+    #     #     :return
+    #     #     """
+    #     #     for i in range(0, len(l), n):
+    #     #         yield l[i:i + n]
+    #
+    #     train_part_index = train_dataset.part_index
+    #     dev_part_index = dev_dataset.part_index
+    #     prev_train_idx = 0
+    #     prev_dev_idx = 0
+    #     for i in range(1, len(train_part_index)):
+    #         max_acc = 0
+    #         n_iter = 0
+    #         new_train_idx = train_part_index[i]
+    #         new_dev_idx = dev_part_index[i]
+    #         part_train_dataset = partition_dataset(train_dataset, prev_train_idx, new_train_idx)
+    #         part_dev_dataset = partition_dataset(dev_dataset, prev_dev_idx, new_dev_idx)
+    #         while n_iter < patient:
+    #             train_loss = self.train(part_train_dataset, plot=False)
+    #             dev_loss, dev_pred = self.test(part_dev_dataset, plot=False)
+    #             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
+    #             print ('iter %d train-loss $f dev-acc $f' %(n_iter, train_loss, dev_acc))
+    #             print ('max acc %f' % (max_acc))
+    #             if max_acc < dev_acc:
+    #                 max_acc = dev_acc
+    #                 n_iter = 0
+    #             else:
+    #                 n_iter +=1
+
 
 
 class Trainer(object):

@@ -7,6 +7,7 @@ from tree import Tree
 from vocab import Vocab
 import Constants
 from itertools import izip
+import metrics
 
 # Dataset class for SICK dataset
 class SICKDataset(data.Dataset):
@@ -452,6 +453,8 @@ class TreeDataset(data.Dataset):
             rel = None
         return (tree, sent, tag, rel, label)
 
+
+
 def make_subtree(source_dataset, tag_flag, rel_flag):
     """
     Extract all subtree
@@ -470,7 +473,7 @@ def make_subtree(source_dataset, tag_flag, rel_flag):
     if rel_flag:
         rels = []
 
-    def get_subtree(input_tree, trees, sents, tags, rels, labels):
+    def get_subtree(input_tree, sent, tag, rel, label):
         """
         recursion function to get all subtree and put into list
         :param tree: 
@@ -479,27 +482,27 @@ def make_subtree(source_dataset, tag_flag, rel_flag):
         for child in input_tree.children:
             if child.gold_label != None:
                 trees.append(deepcopy(child))
-                labels.append(deepcopy(child.gold_label))
+                labels.append(child.gold_label)
                 # sent, rel, tag are access by tree.idx
                 # so we dublicate whole line
-                sents.append(deepcopy(sent))
+                sents.append(sent)
                 if tag_flag:
-                    tags.append(deepcopy(tag))
+                    tags.append(tag)
                 if rel_flag:
-                    rels.append(deepcopy(rel))
-            get_subtree(child, trees, sents, tags, rels, labels)
+                    rels.append(rel)
+            get_subtree(child, sent, tag, rel, label)
 
     for i in tqdm(xrange(source_dataset.size)):
         tree, sent, tag, rel, label = source_dataset[i]
 
         trees.append(deepcopy(tree))
-        sents.append(deepcopy(sent))
-        labels.append(deepcopy(tree.gold_label))
+        sents.append(sent)
+        labels.append(tree.gold_label)
         if tag_flag:
-            tags.append(deepcopy(tag))
+            tags.append(tag)
         if rel_flag:
-            rels.append(deepcopy(rel))
-        get_subtree(tree, trees, sents, tags, rels, labels)
+            rels.append(rel)
+        get_subtree(tree, sent, tag, rel, label)
 
         # for child in tree.children:
         #     if child.gold_label != None:
@@ -535,7 +538,7 @@ def calculate_partition_dataset_by_treedepth(dataset):
     part_depth = []
     part_idx.append(cur_idx)
     for i in tqdm(xrange(dataset.size)):
-        tree = dataset[i][0].depth()
+        tree = dataset[i][0]
         dep = tree.depth()
         if cur_dep < dep:
             part_depth.append(cur_dep) # dep of last part
@@ -545,6 +548,7 @@ def calculate_partition_dataset_by_treedepth(dataset):
     part_depth.append(cur_dep)
     dataset.part_depth = part_depth
     dataset.part_index = part_idx
+    print ('done partition')
     return part_depth, part_idx
 
 def partition_dataset(dataset, start, end):

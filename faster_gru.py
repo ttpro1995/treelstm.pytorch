@@ -69,7 +69,7 @@ class FasterGRUTree(nn.Module):
         grad = F.torch.cat(one_dim)
         return grad
 
-    def forward(self, tree, embs, tags, training = False, subtree_metric = None):
+    def forward(self, tree, embs, tags, max_depth = None, training = False, subtree_metric = None):
         # add singleton dimension for future call to node_forward
         # embs = F.torch.unsqueeze(self.emb(inputs),1)
 
@@ -102,7 +102,7 @@ class FasterGRUTree(nn.Module):
                 x_zeros = x_zeros.cuda()
             tree.state = self.dropout_vertical_mem(self.node_module.forward(x_zeros, h_final))
 
-        if self.output_module != None:
+        if self.output_module != None and (max_depth == None or (tree.depth() > max_depth)):
             output = self.output_module.forward(tree.state, training)
             tree.output = output
             if training and tree.gold_label != None:
@@ -122,7 +122,7 @@ class FasterGRUTree(nn.Module):
     def get_child_state(self, tree, tags):
         """
         get k, tag, parent tag
-        :param tree: 
+        :asm tree: 
         :return: (n_child, 1, mem_dim + 2*tag_dim)
         """
         n = tree.num_children
@@ -148,7 +148,18 @@ class TreeGRUSentiment(nn.Module):
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=args.output_module_dropout)
         self.tree_module.set_output_module(self.output_module)
 
-    def forward(self, tree, embs, tags, training = False, subtree_metric = None):
-        tree_state, loss = self.tree_module(tree, embs, tags, training, subtree_metric = subtree_metric)
+    def forward(self, tree, embs, tags, training = False, subtree_metric = None, max_depth = None):
+        tree_state, loss = self.tree_module.forward(tree, embs, tags, max_depth=max_depth, training= training, subtree_metric = subtree_metric)
         output = tree.output
         return output, loss
+
+"""
+https://pdfs.semanticscholar.org/21d2/55246cd7ddba24a651fd716950f893ea8eb2.pdf 
+training phase:
+    recursive function call to navigate the tree from top to bottom (leaf)
+    from bottom to top, calculate only tree which satisfy specific depth
+testing phase on dev:
+    preprocess data => subtree = sample
+testing on test:
+    as usual
+"""

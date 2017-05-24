@@ -80,22 +80,27 @@ def main():
     train_file = os.path.join(args.data, 'sst_train.pth')
     if os.path.isfile(train_file):
         train_dataset = torch.load(train_file)
+        # train_subtree_dataset = torch.load(train_subtree_file)
     else:
         train_dataset = SSTConstituencyDataset(train_dir, vocab, tagvocab, args.num_classes, args.fine_grain)
         torch.save(train_dataset, train_file)
         is_preprocessing_data = True
+    gc.collect()
 
     # dev
     dev_file = os.path.join(args.data, 'sst_dev.pth')
-    dev_subtree_file = os.path.join(args.data, 'sst_dev_sub.pth')
+    if args.mode == "BABY":
+        dev_subtree_file = os.path.join(args.data, 'sst_dev_sub.pth')
     if os.path.isfile(dev_file) and os.path.isfile(dev_subtree_file):
         dev_dataset = torch.load(dev_file)
-        dev_subtree_dataset = torch.load(dev_subtree_file)
+        if args.mode == "BABY":
+            dev_subtree_dataset = torch.load(dev_subtree_file)
     else:
         dev_dataset = SSTConstituencyDataset(dev_dir, vocab, tagvocab, args.num_classes, args.fine_grain)
         torch.save(dev_dataset, dev_file)
-        dev_subtree_dataset = make_subtree(dev_dataset, tag_flag=True, rel_flag=False)
-        torch.save(dev_subtree_dataset, dev_subtree_file)
+        if args.mode == "BABY":
+            dev_subtree_dataset = make_subtree(dev_dataset, tag_flag=True, rel_flag=False)
+            torch.save(dev_subtree_dataset, dev_subtree_file)
         is_preprocessing_data = True
 
     # test
@@ -332,6 +337,26 @@ def main():
         utils.plot_subtree_metrics(test_sub_metric, epoch, args, 'test')
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
         print('____________________' + str(args.name) + '___________________')
+    elif mode == "BABY":
+        part_index = dev_subtree_dataset.part_index
+        part_index.append(dev_subtree_dataset.size)
+        for depth in range(0, 26, 5): # 0 5 10 15 20 25
+            print ('depth %d' %(depth))
+            start_idx = part_index[depth] # 0
+            end_idx = part_index[depth+1] # 1
+            part_dev_dataset = partition_dataset(dev_subtree_dataset, start_idx, end_idx)
+            for epoch in range(args.epochs):
+                print ('epoch %d' %depth)
+                # sorted_dev = sorted(dev_dataset, key=lambda x: x[0].depth())
+                train_loss = trainer.train(dev_dataset)
+                dev_loss, dev_pred, dev_sub_metric = trainer.test(part_dev_dataset)
+
+                dev_acc = metrics.sentiment_accuracy_score(dev_pred, part_dev_dataset.labels)
+
+                print('==> Train loss   : %f \t' % train_loss, end="")
+                print('==> Dev loss   : %f \t' % dev_loss, end="")
+                utils.plot_subtree_metrics(dev_sub_metric, epoch, args, 'dev')
+                print('Epoch ', epoch + 1, 'dev percentage ', dev_acc)
     else:
         print('DA FUCK IS THIS MODE : ' + str(args.mode))
         for epoch in range(args.epochs):
