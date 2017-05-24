@@ -87,8 +87,11 @@ class FasterGRUTree(nn.Module):
             tree.state = self.dropout_leaf(self.leaf_module.forward(x, h))
         else:
             for idx in xrange(tree.num_children):
-                _, child_loss = self.forward(tree.children[idx], embs, tags, training, subtree_metric)
+                _, child_loss = self.forward(tree.children[idx], embs, tags, max_depth, training, subtree_metric)
                 loss = loss + child_loss
+
+            if max_depth !=None and (tree.depth() > max_depth):
+                return None, loss # condition for curiculum training
 
             x = self.get_child_state(tree, tags)
             h_final = Var(torch.zeros(1, self.mem_dim))
@@ -102,7 +105,8 @@ class FasterGRUTree(nn.Module):
                 x_zeros = x_zeros.cuda()
             tree.state = self.dropout_vertical_mem(self.node_module.forward(x_zeros, h_final))
 
-        if self.output_module != None and (max_depth == None or (tree.depth() > max_depth)):
+        # if self.output_module != None and (max_depth == None or (tree.depth() <= max_depth)):
+        if self.output_module != None:
             output = self.output_module.forward(tree.state, training)
             tree.output = output
             if training and tree.gold_label != None:

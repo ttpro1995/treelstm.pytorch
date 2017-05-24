@@ -137,7 +137,7 @@ class SentimentTrainer(object):
         return loss / len(dataset)
 
     # helper function for testing
-    def test(self, dataset):
+    def test(self, dataset, allow_neutral = False):
         subtree_metric = SubtreeMetric()
         self.model.eval()
         self.embedding_model.eval()
@@ -161,7 +161,8 @@ class SentimentTrainer(object):
             output, _ = self.model(tree, sent_emb, tag_emb, subtree_metric = subtree_metric)
             err = self.criterion(output, target)
             loss += err.data[0]
-            output[:, 1] = -9999  # no need middle (neutral) value
+            if not allow_neutral:
+                output[:, 1] = -9999  # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             predictions[idx] = pred.data.cpu()[0][0]
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
