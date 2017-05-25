@@ -1,4 +1,5 @@
 import argparse
+import random
 
 def parse_args(type=0):
     if type == 0:
@@ -17,7 +18,7 @@ def parse_args(type=0):
                             help='weight decay (default: 1e-4)')
         parser.add_argument('--optim', default='adam',
                             help='optimizer (default: adam)')
-        parser.add_argument('--seed', default=123, type=int,
+        parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: 123)')
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
         cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')
@@ -57,7 +58,7 @@ def parse_args(type=0):
                             help='l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
-        parser.add_argument('--seed', default=123, type=int,
+        parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: 123)')
         parser.add_argument('--fine_grain', default=False, type=bool,
                             help='fine grained (default False)')
@@ -123,7 +124,7 @@ def parse_args(type=0):
                             help='l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
-        parser.add_argument('--seed', default=123, type=int,
+        parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: 123)')
         parser.add_argument('--fine_grain', default=False, type=bool,
                             help='fine grained (default False)')

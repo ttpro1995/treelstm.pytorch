@@ -60,7 +60,7 @@ class ChildGRU(nn.Module):
 
 class TreeCompositionGRU(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
-                 combine_head='mid', rel_self=None, dropout=True, attention = False):
+                 combine_head='end', rel_self=None, dropout=True, attention = False):
         super(TreeCompositionGRU, self).__init__()
         self.cudaFlag = cuda
         self.mem_dim = mem_dim
@@ -77,7 +77,7 @@ class TreeCompositionGRU(nn.Module):
         self.gru = ChildGRU(cuda, word_dim, tag_dim, rel_dim, mem_dim, self.rel_self,
                                                 dropout=self.dropout)
 
-
+        print ('combine_head '+self.combine_head)
         self.criterion = criterion
         self.output_module = None
 
@@ -146,7 +146,10 @@ class TreeCompositionGRU(nn.Module):
 
             list_node = tree.children
             list_node.append(tree)
-            phrase = sorted(list_node, key=lambda k: k.idx)
+            if self.combine_head == 'mid':
+                phrase = sorted(list_node, key=lambda k: k.idx)
+            elif self.combine_head == 'end':
+                phrase = list_node
             h_prev = h
 
             for node in phrase:
