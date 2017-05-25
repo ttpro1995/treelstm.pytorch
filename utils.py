@@ -105,6 +105,55 @@ def print_tree(vocab, tag_vocab, word, tree, level):
     for i in xrange(tree.num_children):
         print_tree(vocab, tag_vocab, word,tree.children[i], level+1)
 
+def print_tree_file(file_obj, vocab, tag_vocab, word, tree, pred_info, level = 0):
+    """
+    Print tree for debug
+    :param vocab: 
+    :param input: 
+    :param tree: 
+    :param level: 
+    :return: 
+    """
+    indent = ''
+    leaf_range = len(word)
+    for i in range(level):
+        indent += '| '
+    line = indent + str(tree.idx) + ' '
+    # tag
+    line += str(tag_vocab.idxToLabel[tree.tags]).upper()+' '
+
+    # label
+    if tree.gold_label != None:
+        line += str(tree.gold_label) + ' '
+
+    # predict info
+    if tree.idx in pred_info.keys():
+        pred = pred_info[tree.idx]
+        line += str(pred) + ' '
+
+    # word
+    if tree.idx -1 < leaf_range:
+        line += str(vocab.idxToLabel[word[tree.idx-1]])+' '
+
+    line += '  ' + '\n'
+    file_obj.write(line)
+    for i in xrange(tree.num_children):
+        print_tree_file(file_obj, vocab, tag_vocab, word, tree.children[i], pred_info, level+1)
+
+def print_trees_file(args, vocab, tag_vocab, dataset, print_list, name = ''):
+    name = name + '.txt'
+    treedir = os.path.join('plot', args.name)
+    treedir = os.path.join(treedir, 'incorrect_tree')
+    mkdir_p(treedir)
+    treedir = os.path.join(treedir, args.name + name)
+    tree_file = open(treedir, 'w')
+    for idx in print_list.keys():
+        tree, sent, tag, rel, label = dataset[idx]
+        print_tree_file(tree_file, vocab, tag_vocab, sent, tree, print_list[idx])
+        tree_file.write('------------------------\n')
+
+
+
 
 def mkdir_p(mypath):
     '''Creates a directory. equivalent to using mkdir -p on the command line'''

@@ -158,6 +158,7 @@ class SentimentTrainer(object):
                 target = target.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
             # output, _ = self.model(tree, sent_emb, tag_emb, rel_emb)  # bug rel_emb ?
+            subtree_metric.current_idx = idx
             output, _ = self.model(tree, sent_emb, tag_emb, subtree_metric = subtree_metric)
             err = self.criterion(output, target)
             loss += err.data[0]

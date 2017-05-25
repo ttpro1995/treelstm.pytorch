@@ -253,7 +253,11 @@ def main():
 
     # create trainer object for training and testing
     trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer, scheduler=scheduler)
-
+    # debug meow
+    # loss, pred, dev_sub_metric = trainer.test(dev_dataset)
+    # printlist = dev_sub_metric.print_list
+    # utils.print_trees_file(args, vocab, tagvocab, dev_dataset, printlist, 'meow_debug')
+    ##
     mode = args.mode
     stat_dev_acc = []
     stat_train_acc = []
@@ -380,7 +384,7 @@ def main():
                 print('Dev acc on full dev dataset %f' % (full_dev_acc))
                 if dev_acc > max_dev_score:
                     max_dev_score = dev_acc
-                    n_iter = 0 
+                    n_iter = 0
                     print ('Update max dev score %f'%(max_dev_score))
                     best_dev_embedding = args.name+str(depth)+"embedding.pth"
                     best_dev_model = args.name + str(depth) + "model.pth"
@@ -394,6 +398,10 @@ def main():
                 print('==> Train loss   : %f \t' % train_loss, end="")
                 print('==> Dev loss   : %f \t' % dev_loss, end="")
                 utils.plot_subtree_metrics(dev_sub_metric, trainer.epoch, args, 'dev')
+
+                # print incorrect tree
+                print_list = dev_sub_metric.print_list
+                utils.print_trees_file(args, vocab, tagvocab, dev_dataset, print_list, str(depth) + '_' + str(n_iter))
 
             start_depth = depth + 1  # for next iteration
         dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)

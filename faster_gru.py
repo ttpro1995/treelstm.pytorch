@@ -120,7 +120,7 @@ class FasterGRUTree(nn.Module):
                 # measue subtree metrics
                 subtree_metric.count(correct, tree.count_leaf())
             if subtree_metric and not training and tree.gold_label != None:
-                subtree_metric.count_depth(correct, tree.depth())
+                subtree_metric.count_depth(correct, tree.depth(), tree.idx, pred.data[0][0])
                 subtree_metric.checkDepth(tree.depth())
 
 

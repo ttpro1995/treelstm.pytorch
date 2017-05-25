@@ -36,6 +36,8 @@ class SubtreeMetric():
         self.correct_depth = {}
         self.total_depth = {}
         self.checked_depth = {}
+        self.current_idx = -1 # current idx in dataset
+        self.print_list = {} # list of data point need to print
 
     def reset(self):
         self.correct = {}
@@ -49,15 +51,23 @@ class SubtreeMetric():
             self.correct[height] = 0
         if correct:
             self.correct[height] += 1
-    def count_depth(self, correct, depth):
+
+    def count_depth(self, correct, depth, tree_idx, pred):
         if depth in self.total_depth.keys():
             self.total_depth[depth] +=1
         else:
             self.total_depth[depth] = 1
             self.correct_depth[depth] = 0
+
             # self.checked_depth[depth] = True
         if correct:
             self.correct_depth[depth] += 1
+        else: # incorrect
+            if self.current_idx in self.print_list.keys():
+                self.print_list[self.current_idx][tree_idx] = pred
+            else:
+                self.print_list[self.current_idx] = {}
+                self.print_list[self.current_idx][tree_idx] = pred
 
     def checkDepth(self, depth):
         """
