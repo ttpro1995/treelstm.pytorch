@@ -35,6 +35,7 @@ class SubtreeMetric():
         self.total = {}
         self.correct_depth = {}
         self.total_depth = {}
+        self.checked_depth = {}
 
     def reset(self):
         self.correct = {}
@@ -54,8 +55,18 @@ class SubtreeMetric():
         else:
             self.total_depth[depth] = 1
             self.correct_depth[depth] = 0
+            # self.checked_depth[depth] = True
         if correct:
             self.correct_depth[depth] += 1
+
+    def checkDepth(self, depth):
+        """
+        Check if that depth exist (for easier debug)
+        :param depth: the depth you want to check
+        :return: 
+        """
+        if depth not in self.checked_depth.keys():
+            self.checked_depth[depth] = True
 
     def getAcc(self):
         acc = {}
@@ -79,9 +90,17 @@ class SubtreeMetric():
                     total += self.total_depth[depth]
                     correct += self.correct_depth[depth]
                 else:
+                    # the depth is missing here
+                    self.correct_depth[depth] = 0
+                    self.total_depth[depth] = 0
                     acc[depth] = 0
             group_acc = float(correct)/total
             return acc, group_acc
+
+    def printCheckDepth(self, start, end):
+        for depth in range(start, end):
+            if depth in self.checked_depth:
+                print ('depth '+str(depth) + ' - '+ str(self.checked_depth[depth]))
 
     def printAccDepth(self, start, end = -1):
         acc, group_acc = self.getAccDepth(start, end)

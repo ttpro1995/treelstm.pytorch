@@ -116,11 +116,12 @@ class FasterGRUTree(nn.Module):
                 loss = loss + self.criterion(output, target)
             val, pred = torch.max(output, 1)
             correct = pred.data[0][0] == tree.gold_label
-            if subtree_metric and not training and tree.parent and tree.gold_label:
+            if subtree_metric and not training and tree.parent and tree.gold_label!= None:
                 # measue subtree metrics
                 subtree_metric.count(correct, tree.count_leaf())
-            if subtree_metric and not training and tree.gold_label:
+            if subtree_metric and not training and tree.gold_label != None:
                 subtree_metric.count_depth(correct, tree.depth())
+                subtree_metric.checkDepth(tree.depth())
 
 
         return tree.state, loss
