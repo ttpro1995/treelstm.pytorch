@@ -342,7 +342,20 @@ def main():
         # part_index.append(dev_subtree_dataset.size)
         depth_group = [5, 10, 15, 25]
         start_depth = 0
+        best_dev_model = None
+        best_dev_embedding = None
+        best_dev_optim_state = None
         for i in  range(len(depth_group)): # 0 5 10 15 20 25
+            if best_dev_model != None: # load best model (by dev) from last bucket
+                model = torch.load(os.path.join(args.saved, best_dev_model))
+                embedding_model =  torch.load(os.path.join(args.saved, best_dev_embedding))
+                optimizer_state_dict = torch.load(os.path.join(args.saved, best_dev_optim_state))
+                trainer.optimizer.load_state_dict(optimizer_state_dict)
+                trainer.embedding_model = embedding_model
+                trainer.model = model
+                assert trainer.scheduler == None # well, no scheduler for sure
+
+
             depth = depth_group[i]
             print ('depth %d and below' %(depth))
             # start_idx = part_index[start_depth] # start from
@@ -369,6 +382,13 @@ def main():
                     max_dev_score = dev_acc
                     n_iter = 0
                     print ('Update max dev score %f'%(max_dev_score))
+                    best_dev_embedding = args.name+str(depth)+"embedding.pth"
+                    best_dev_model = args.name + str(depth) + "model.pth"
+                    best_dev_optim_state = args.name + str(depth) + "optim_state.pth"
+                    torch.save(embedding_model, os.path.join(args.saved, best_dev_embedding))
+                    torch.save(model, os.path.join(args.saved, best_dev_model))
+                    torch.save(trainer.optimizer.state_dict(), best_dev_optim_state)
+                    print('saved '+best_dev_embedding + ' ' + best_dev_model + ' ' + best_dev_optim_state)
                 else:
                     n_iter += 1
                 print('==> Train loss   : %f \t' % train_loss, end="")
