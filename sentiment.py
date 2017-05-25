@@ -380,14 +380,14 @@ def main():
                 print('Dev acc on full dev dataset %f' % (full_dev_acc))
                 if dev_acc > max_dev_score:
                     max_dev_score = dev_acc
-                    n_iter = 0
+                    n_iter = 0 
                     print ('Update max dev score %f'%(max_dev_score))
                     best_dev_embedding = args.name+str(depth)+"embedding.pth"
                     best_dev_model = args.name + str(depth) + "model.pth"
                     best_dev_optim_state = args.name + str(depth) + "optim_state.pth"
                     torch.save(embedding_model, os.path.join(args.saved, best_dev_embedding))
                     torch.save(model, os.path.join(args.saved, best_dev_model))
-                    torch.save(trainer.optimizer.state_dict(), best_dev_optim_state)
+                    torch.save(trainer.optimizer.state_dict(), os.path.join(args.saved, best_dev_optim_state))
                     print('saved '+best_dev_embedding + ' ' + best_dev_model + ' ' + best_dev_optim_state)
                 else:
                     n_iter += 1
