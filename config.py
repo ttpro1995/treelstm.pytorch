@@ -39,6 +39,8 @@ def parse_args(type=0):
                             help='path to dataset')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
+        parser.add_argument('--paragram', default='/media/vdvinh/25A1FEDE380BDADA/data/john',
+                            help='directory with paragram embeddings')
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
         parser.add_argument('--epochs', default=10, type=int,
@@ -53,6 +55,8 @@ def parse_args(type=0):
                             help='l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
+        parser.add_argument('--embedding', default='glove',
+                            help='embedding type paragram or glove (default: glove)')
         parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: 123)')
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
@@ -77,6 +81,11 @@ def parse_args(type=0):
                             help='path to dataset')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
+        parser.add_argument('--embedding', default='paragram',
+                            help='embedding type paragram or glove (default: glove)')
+        parser.add_argument('--paragram', default='/media/vdvinh/25A1FEDE380BDADA/data/john',
+                            help='directory with paragram embeddings')
+
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
         parser.add_argument('--epochs', default=10, type=int,

@@ -137,14 +137,27 @@ def main():
 
     # for words common to dataset vocab and GLOVE, use GLOVE vectors
     # for other words in dataset vocab, use random normal vectors
-    emb_file = os.path.join(args.data, 'sst_embed.pth')
+    if args.embedding == 'glove':
+        emb_torch = 'sst_embed.pth'
+        emb_vector = 'glove.840B.300d'
+        emb_vector_path = os.path.join(args.glove, emb_vector)
+        assert os.path.isfile(emb_vector_path+'.txt')
+    elif args.embedding == 'paragram':
+        emb_torch = 'sst_embed_paragram.pth'
+        emb_vector = 'paragram_300_sl999'
+        emb_vector_path = os.path.join(args.paragram, emb_vector)
+        assert os.path.isfile(emb_vector_path+'.txt')
+    else:
+        assert False
+
+    emb_file = os.path.join(args.data, emb_torch)
     if os.path.isfile(emb_file):
         emb = torch.load(emb_file)
     else:
 
         # load glove embeddings and vocab
-        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove,'glove.840B.300d'))
-        print('==> GLOVE vocabulary size: %d ' % glove_vocab.size())
+        glove_vocab, glove_emb = load_word_vectors(emb_vector_path)
+        print('==> Embedding vocabulary size: %d ' % glove_vocab.size())
 
         emb = torch.zeros(vocab.size(),glove_emb.size(1))
 
@@ -204,8 +217,6 @@ def main():
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             print('==> Train loss   : %f \t' % train_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
-            torch.save(model, args.saved + str(epoch) + '_model_' + filename)
-            torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             if dev_acc > max_dev:
                 print ('update best dev acc %f ' %(dev_acc))
                 max_dev = dev_acc
