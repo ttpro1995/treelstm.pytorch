@@ -75,6 +75,8 @@ def main():
     # get vocab object from vocab file previously written
     vocab = Vocab(filename=vocab_file)
     relvocab = Vocab(filename=rel_vocab_file)
+    relvocab.add('head')
+    rel_self_idx = [relvocab.labelToIdx['head']]
     tagvocab = Vocab(filename=tag_vocab_file)
     print('==> SST vocabulary size : %d ' % vocab.size())
     print('==> SST rel vocabulary size : %d ' % relvocab.size())
@@ -117,7 +119,8 @@ def main():
     model = TreeCompositionGRUSentiment(
                 args.cuda, args.input_dim,
                 args.tag_dim, args.rel_dim,
-        args.mem_dim, args.at_hid_dim ,3, criterion
+        args.mem_dim, args.at_hid_dim ,3, criterion,
+        combine_head=args.combine_head, rel_self=rel_self_idx
             )
 
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
@@ -125,6 +128,7 @@ def main():
 
     embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), relvocab.size(), args.word_dim, args.tag_dim, args.rel_dim)
 
+    model.tree_module.set_embedding_model(embedding_model)
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':

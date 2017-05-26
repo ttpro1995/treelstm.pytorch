@@ -40,6 +40,9 @@ def parse_args(type=0):
         parser.add_argument('--rel_glove', default=0, type=int,
                             help='use rel embedding pretrained by glove')
 
+        parser.add_argument('--combine_head', default='mid',
+                            help='node head (mid or end)')
+
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
         parser.add_argument('--epochs', default=10, type=int,
@@ -105,6 +108,9 @@ def parse_args(type=0):
                             help='use tag embedding pretrained by glove')
         parser.add_argument('--rel_glove', default=0, type=int,
                             help='use rel embedding pretrained by glove')
+
+        parser.add_argument('--combine_head', default='mid',
+                            help='node head (mid or end)')
 
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')

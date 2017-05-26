@@ -28,9 +28,10 @@ class EmbeddingModel(nn.Module):
         sent_emb = None
         tag_emb = None
         rel_emb = None
-        sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
-        if self.tag_dim>0:
+        if sent_inputs is not None:
+            sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
+        if tag_inputs is not None and self.tag_dim>0:
             tag_emb = F.torch.unsqueeze(self.tag_emb.forward(tag_inputs), 1)
-        if self.rel_dim>0:
+        if rel_inputs is not None and self.rel_dim>0:
             rel_emb = F.torch.unsqueeze(self.rel_emb.forward(rel_inputs), 1)
         return sent_emb, tag_emb, rel_emb

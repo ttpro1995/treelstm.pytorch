@@ -11,7 +11,7 @@ class ChildGRU(nn.Module):
     """
     To replace composition lstm
     """
-    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, rel_sel, dropout=True):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, dropout=True):
         super(ChildGRU, self).__init__()
         self.args = config.parse_args(type=1)
         self.cudaFlag = cuda
@@ -19,7 +19,6 @@ class ChildGRU(nn.Module):
         self.tag_dim = tag_dim
         self.rel_dim = rel_dim
         self.mem_dim = mem_dim
-        self.rel_self = rel_sel
         self.dropout = dropout
         self.gru_cell = nn.GRUCell(word_dim+tag_dim+rel_dim+mem_dim, mem_dim)
         if self.cudaFlag:
@@ -43,13 +42,7 @@ class ChildGRU(nn.Module):
             k = self.memory_dropout(k)
 
         if self.rel_dim:
-            if rel is None:
-                rel = Var(self.rel_self)
-                if self.cudaFlag:
-                    rel = rel.cuda()
-            else:
-                if self.dropout:
-                    rel = self.input_dropout(rel)
+            rel = self.input_dropout(rel)
             x = torch.cat([word, tag, rel, k], 1)
         else:
             x = torch.cat([word, tag, k], 1)
@@ -60,7 +53,7 @@ class ChildGRU(nn.Module):
 
 class TreeCompositionGRU(nn.Module):
     def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
-                 combine_head='end', rel_self=None, dropout=True, attention = False):
+                 combine_head='mid', rel_self=None, dropout=True, attention = False):
         super(TreeCompositionGRU, self).__init__()
         self.cudaFlag = cuda
         self.mem_dim = mem_dim
@@ -70,16 +63,24 @@ class TreeCompositionGRU(nn.Module):
         self.combine_head = combine_head
         self.dropout = dropout
         self.attention = attention
-        if rel_dim and not rel_self:
-            rel_self = torch.Tensor(1, self.rel_dim).normal_(-0.05, 0.05)
+        # if rel_dim and not rel_self:
+        #     rel_self = torch.Tensor(1, self.rel_dim).normal_(-0.05, 0.05)
         self.rel_self = rel_self
+        assert len(self.rel_self) == 1
+        self.rel_self = Var(torch.Tensor(self.rel_self).long())
+        if self.cudaFlag:
+            self.rel_self = self.rel_self.cuda()
 
-        self.gru = ChildGRU(cuda, word_dim, tag_dim, rel_dim, mem_dim, self.rel_self,
+        self.gru = ChildGRU(cuda, word_dim, tag_dim, rel_dim, mem_dim,
                                                 dropout=self.dropout)
 
         print ('combine_head '+self.combine_head)
         self.criterion = criterion
         self.output_module = None
+        self.embedding_model = None
+
+    def set_embedding_model(self, embedding_model):
+        self.embedding_model = embedding_model
 
     def getParameters(self):
         """
@@ -167,25 +168,25 @@ class TreeCompositionGRU(nn.Module):
                 else:
                     # rel => self
                     # no state (no k)
-                    rel = Var(self.rel_self)
+                    _, _, rel = self.embedding_model.forward(None, None, self.rel_self)
+                    rel = rel[0]
                     k = Var(torch.zeros(1,self.mem_dim))
                     if self.cudaFlag:
-                        rel = rel.cuda()
                         k = k.cuda()
                     h = self.gru.forward(
                         word_emb[node.idx - 1], tag, rel, k, h_prev, training=training
                     )
                 h_prev = h
-
         k = h
         return k
 #############################################
 class TreeCompositionGRUSentiment(nn.Module):
-    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion, dropout=True):
+    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion, dropout=True, combine_head = 'mid',
+                 rel_self = None):
         super(TreeCompositionGRUSentiment, self).__init__()
         self.cudaFlag = cuda
         self.tree_module = TreeCompositionGRU(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
-                                               dropout=dropout)
+                                               dropout=dropout, rel_self = rel_self)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=dropout)
         self.tree_module.set_output_module(self.output_module)
 
@@ -223,10 +224,11 @@ class SimilarityModule(nn.Module):
         return out
 
 class SimilarityTreeGRU(nn.Module):
-    def __init__(self, cuda, vocab_size, word_dim, tag_dim, rel_dim, mem_dim, hidden_dim, num_classes):
+    def __init__(self, cuda, vocab_size, word_dim, tag_dim, rel_dim, mem_dim, hidden_dim, num_classes, combine_head = 'mid', rel_self = None):
         super(SimilarityTreeGRU, self).__init__()
         self.cudaFlag = cuda
-        self.tree_module = TreeCompositionGRU(cuda, word_dim, tag_dim, rel_dim, mem_dim, None, criterion=None)
+        self.tree_module = TreeCompositionGRU(cuda, word_dim, tag_dim, rel_dim, mem_dim, None, criterion=None, combine_head=combine_head
+                                              ,rel_self = rel_self)
         self.similarity = SimilarityModule(cuda, mem_dim, hidden_dim, num_classes)
 
     def forward(self, ltree, linputs, ltag, lrel, rtree, rinputs, rtag, rrel):

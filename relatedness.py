@@ -77,6 +77,8 @@ def main():
     # get vocab object from vocab file previously written
     vocab = Vocab(filename=sick_vocab_file, data=[Constants.PAD_WORD, Constants.UNK_WORD, Constants.BOS_WORD, Constants.EOS_WORD])
     relvocab = Vocab(filename=rel_vocab_file)
+    relvocab.add('head')
+    rel_self_idx = [relvocab.labelToIdx['head']]
     tagvocab = Vocab(filename=tag_vocab_file)
     print('==> SICK rel vocabulary size : %d ' % relvocab.size())
     print('==> SICK tag vocabulary size : %d ' % tagvocab.size())
@@ -114,11 +116,13 @@ def main():
     model = SimilarityTreeGRU(
                 args.cuda, vocab.size(),
                 args.word_dim, args.tag_dim,
-                args.rel_dim, args.mem_dim, args.hidden_dim, 5
+                args.rel_dim, args.mem_dim, args.hidden_dim, 5,
+        combine_head=args.combine_head, rel_self=rel_self_idx
             )
     embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), relvocab.size(), args.word_dim, args.tag_dim, args.rel_dim)
     if args.cuda:
         embedding_model = embedding_model.cuda()
+    model.tree_module.set_embedding_model(embedding_model)
 
     criterion = nn.KLDivLoss()
     if args.cuda:
