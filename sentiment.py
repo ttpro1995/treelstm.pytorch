@@ -221,8 +221,9 @@ def main():
 
 
 if __name__ == "__main__":
+    args = parse_args(type=1)
     # log to console and file
-    logger1 = log_util.create_logger("temp_file", print_console=True)
+    logger1 = log_util.create_logger(os.path.join('logs',args.name+'.log'), print_console=True)
     logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)
