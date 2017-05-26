@@ -188,8 +188,12 @@ def main():
             torch.save(model, args.saved + str(epoch) + '_model_' + filename)
             torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             if dev_acc > max_dev:
+                print ('update best dev acc %f ' %(dev_acc))
                 max_dev = dev_acc
                 max_dev_epoch = epoch
+                utils.mkdir_p(args.saved)
+                torch.save(model, os.path.join(args.saved, str(epoch) + '_model_' + filename))
+                torch.save(embedding_model, os.path.join(args.saved, str(epoch) + '_embedding_' + filename))
             gc.collect()
         print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
         print('eva on test set ')
