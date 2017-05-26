@@ -68,7 +68,7 @@ def parse_args(type=0):
 
         args = parser.parse_args()
         return args
-    else:
+    elif type == 1:
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analysis Trees')
         parser.add_argument('--name', default='default_name',
                             help='name for log and saved models')
@@ -85,6 +85,9 @@ def parse_args(type=0):
                             help='embedding type paragram or glove (default: glove)')
         parser.add_argument('--paragram', default='/media/vdvinh/25A1FEDE380BDADA/data/john',
                             help='directory with paragram embeddings')
+
+        parser.add_argument('--mem_dim', default=0, type=int,
+                            help='memory dimension (default: 0 auto set)')
 
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')

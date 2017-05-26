@@ -35,15 +35,20 @@ from trainer import SentimentTrainer
 def main():
     global args
     args = parse_args(type=1)
-    args.input_dim= 300
-    if args.model_name == 'dependency':
-        args.mem_dim = 168
-    elif args.model_name == 'constituency':
-        args.mem_dim = 150
-    elif args.model_name == 'lstm':
-        args.mem_dim = 168
-    elif args.model_name == 'bilstm':
-        args.mem_dim = 168
+    print (args.name)
+    print (args.model_name)
+
+    args.input_dim = 300
+
+    if args.mem_dim == 0:
+        if args.model_name == 'dependency':
+            args.mem_dim = 168
+        elif args.model_name == 'constituency':
+            args.mem_dim = 150
+        elif args.model_name == 'lstm':
+            args.mem_dim = 168
+        elif args.model_name == 'bilstm':
+            args.mem_dim = 168
 
 
     if args.fine_grain:
@@ -125,12 +130,10 @@ def main():
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':
-        optimizer   = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
+        optimizer   = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
     elif args.optim=='adagrad':
         # optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
-        optimizer = optim.Adagrad([
-                {'params': model.parameters(), 'lr': args.lr}
-            ], lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
     metrics = Metrics(args.num_classes)
 
     utils.count_param(model)
@@ -227,8 +230,8 @@ def main():
             gc.collect()
         print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
         print('eva on test set ')
-        model = torch.load(args.saved + str(max_dev_epoch) + '_model_' + filename)
-        embedding_model = torch.load(args.saved + str(max_dev_epoch) + '_embedding_' + filename)
+        model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_model_' + filename))
+        embedding_model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_embedding_' + filename))
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
         test_loss, test_pred = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
