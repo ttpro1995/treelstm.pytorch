@@ -40,6 +40,12 @@ def main():
         args.mem_dim = 168
     elif args.model_name == 'constituency':
         args.mem_dim = 150
+    elif args.model_name == 'lstm':
+        args.mem_dim = 168
+    elif args.model_name == 'bilstm':
+        args.mem_dim = 168
+
+
     if args.fine_grain:
         args.num_classes = 5 # 0 1 2 3 4
     else:
@@ -97,11 +103,19 @@ def main():
 
     criterion = nn.NLLLoss()
     # initialize model, criterion/loss_function, optimizer
-    model = TreeLSTMSentiment(
-                args.cuda, vocab.size(),
-                args.input_dim, args.mem_dim,
-                args.num_classes, args.model_name, criterion
-            )
+
+    if args.model_name == 'dependency' or args.model_name == 'constituency':
+        model = TreeLSTMSentiment(
+                    args.cuda, vocab.size(),
+                    args.input_dim, args.mem_dim,
+                    args.num_classes, args.model_name, criterion
+                )
+    elif args.model_name == 'lstm' or args.model_name == 'bilstm':
+        model = LSTMSentiment(
+                    args.cuda, vocab.size(),
+                    args.input_dim, args.mem_dim,
+                    args.num_classes, args.model_name, criterion
+                )
 
     embedding_model = nn.Embedding(vocab.size(), args.input_dim)
 
@@ -155,7 +169,12 @@ def main():
     embedding_model.state_dict()['weight'].copy_(emb)
 
     # create trainer object for training and testing
-    trainer     = SentimentTrainer(args, model, embedding_model ,criterion, optimizer)
+    if args.model_name == 'dependency' or args.model_name == 'constituency':
+        trainer = SentimentTrainer(args, model, embedding_model, None, optimizer)
+    elif args.model_name == 'lstm' or args.model_name == 'bilstm':
+        trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
+
+    # trainer = SentimentTrainer(args, model, embedding_model ,criterion, optimizer)
 
     mode = 'EXPERIMENT'
     if mode == 'DEBUG':

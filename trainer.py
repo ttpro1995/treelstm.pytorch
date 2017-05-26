@@ -34,7 +34,11 @@ class SentimentTrainer(object):
                 input = input.cuda()
                 target = target.cuda()
             emb = F.torch.unsqueeze(self.embedding_model(input), 1)
-            output, err = self.model.forward(tree, emb, training = True)
+            if self.criterion is None:
+                output, err = self.model.forward(tree, emb, training = True)
+            else:
+                output, _ = self.model.forward(tree, emb, training=True)
+                err = self.criterion(output, target)
             #params = self.model.childsumtreelstm.getParameters()
             # params_norm = params.norm()
             err = err/self.args.batchsize # + 0.5*self.args.reg*params_norm*params_norm # custom bias

@@ -367,3 +367,30 @@ class TreeLSTMSentiment(nn.Module):
         tree_state, loss = self.tree_module(tree, inputs, training)
         output = tree.output
         return output, loss
+
+######################################################
+class LSTMSentiment(nn.Module):
+    def __init__(self, cuda, vocab_size, in_dim, mem_dim, num_classes, model_name, criterion):
+        super(LSTMSentiment, self).__init__()
+        self.cudaFlag = cuda
+        self.bidirectional = False
+        if model_name == 'bilstm':
+            self.bidirectional = True
+            self.output_module = SentimentModule(cuda, 2*mem_dim, num_classes, dropout=True)
+        else:
+            self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.lstm = nn.LSTM(input_size=in_dim, hidden_size=mem_dim, bidirectional=self.bidirectional)
+        if self.cudaFlag:
+            self.lstm = self.lstm.cuda()
+
+
+    def forward(self, tree, vec, training = False):
+        _, hn = self.lstm.forward(vec)
+        h = hn[0]
+        if self.bidirectional:
+            h = torch.cat(h, 1)
+        else:
+            h = torch.squeeze(h, 1)
+        output = self.output_module.forward(h, training)
+        return output, None
+
