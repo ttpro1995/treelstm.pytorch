@@ -1,5 +1,5 @@
 import argparse
-
+import random
 def parse_args(type=0):
     if type == 0:
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentence Similarity on Dependency Trees')
@@ -53,7 +53,7 @@ def parse_args(type=0):
                             help='l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
-        parser.add_argument('--seed', default=123, type=int,
+        parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: 123)')
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
         cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')
@@ -72,7 +72,7 @@ def parse_args(type=0):
                             help='name for log and saved models')
 
         parser.add_argument('--model_name', default='constituency',
-                            help='model name constituency or dependency')
+                            help='model name constituency or dependency or lstm or bilstm')
         parser.add_argument('--data', default='data/sst/',
                             help='path to dataset')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
@@ -91,8 +91,8 @@ def parse_args(type=0):
                             help='l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
-        parser.add_argument('--seed', default=123, type=int,
-                            help='random seed (default: 123)')
+        parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
+                            help='random seed (default: random)')
         parser.add_argument('--fine_grain', default=False, type=bool,
                             help='fine grained (default False)')
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
