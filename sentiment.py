@@ -117,7 +117,7 @@ def main():
                 )
     elif args.model_name == 'lstm' or args.model_name == 'bilstm':
         model = LSTMSentiment(
-                    args.cuda, vocab.size(),
+                    args.cuda, args.train_subtrees,
                     args.input_dim, args.mem_dim,
                     args.num_classes, args.model_name, criterion
                 )

@@ -89,6 +89,10 @@ def parse_args(type=0):
         parser.add_argument('--mem_dim', default=0, type=int,
                             help='memory dimension (default: 0 auto set)')
 
+        parser.add_argument('--train_subtrees', default=4, type=int,
+                            help='number of subtree to sample default 4')
+
+
         parser.add_argument('--batchsize', default=25, type=int,
                             help='batchsize for optimizer updates')
         parser.add_argument('--epochs', default=10, type=int,

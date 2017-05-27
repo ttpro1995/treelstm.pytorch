@@ -4,6 +4,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable as Var
 import Constants
 import utils
+import numpy as np
+import math
 
 class BinaryTreeLeafModule(nn.Module):
     """
@@ -370,10 +372,12 @@ class TreeLSTMSentiment(nn.Module):
 
 ######################################################
 class LSTMSentiment(nn.Module):
-    def __init__(self, cuda, vocab_size, in_dim, mem_dim, num_classes, model_name, criterion):
+    def __init__(self, cuda, train_subtrees, in_dim, mem_dim, num_classes, model_name, criterion):
         super(LSTMSentiment, self).__init__()
         self.cudaFlag = cuda
         self.bidirectional = False
+        self.criterion = criterion
+        self.train_subtrees = train_subtrees
         if model_name == 'bilstm':
             self.bidirectional = True
             self.output_module = SentimentModule(cuda, 2*mem_dim, num_classes, dropout=True)
@@ -385,12 +389,41 @@ class LSTMSentiment(nn.Module):
 
 
     def forward(self, tree, vec, training = False):
-        _, hn = self.lstm.forward(vec)
-        h = hn[0]
-        if self.bidirectional:
-            h = torch.cat(h, 1)
+        nodes = tree.depth_first_preorder()
+        loss = Var(torch.zeros(1))  # init zero loss
+        if self.cudaFlag:
+            loss = loss.cuda()
+
+        if training:
+            for i in range(self.train_subtrees + 1):
+                if i == 0:
+                    node = nodes[0]
+                else:
+                    node = nodes[int(math.ceil(np.random.uniform(0, len(nodes)-1)))]
+                lo, hi = node.lo, node.hi
+                span_vec = vec[lo-1:hi] # [inclusive, excludsive)
+                _, hn = self.lstm.forward(span_vec)
+                h = hn[0]
+                if self.bidirectional:
+                    h = torch.cat(h, 1)
+                else:
+                    h = torch.squeeze(h, 1)
+                output = self.output_module.forward(h, training)
+
+                if training and node.gold_label != None:
+                    target = Var(utils.map_label_to_target_sentiment(node.gold_label))
+                    if self.cudaFlag:
+                        target = target.cuda()
+                    loss = loss + self.criterion(output, target)
+            loss = loss
+            return output, loss
         else:
-            h = torch.squeeze(h, 1)
-        output = self.output_module.forward(h, training)
-        return output, None
+            _, hn = self.lstm.forward(vec)
+            h = hn[0]
+            if self.bidirectional:
+                h = torch.cat(h, 1)
+            else:
+                h = torch.squeeze(h, 1)
+            output = self.output_module.forward(h, training)
+            return output, _
 

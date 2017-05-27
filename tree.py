@@ -64,9 +64,9 @@ def depth_first_preorder(tree, nodes):
     """
     if tree==None:
         return
+    nodes.append(tree) # root at index 0
     if tree.num_children == 0:
         depth_first_preorder(None, nodes)
     else:
         for child in tree.children:
             depth_first_preorder(child, nodes)
-    nodes.append(tree)
