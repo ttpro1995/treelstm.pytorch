@@ -6,6 +6,7 @@ class Tree(object):
         self.children = list()
         self.gold_label = None # node label for SST
         self.output = None # output node for SST
+        self.nodes = None
 
     def add_child(self,child):
         child.parent = self
@@ -21,6 +22,18 @@ class Tree(object):
         self._size = count
         return self._size
 
+    def set_spans(self):
+        if self.num_children == 0:
+            self.lo, self.hi = self.idx, self.idx
+        else:
+            for child in self.children:
+                child.set_spans()
+            self.lo = self.children[0].lo
+            self.hi = self.children[0].hi
+            for child in self.children:
+                self.lo = min(self.lo, child.lo)
+                self.hi = max(self.hi, child.hi)
+
     def depth(self):
         if getattr(self,'_depth'):
             return self._depth
@@ -33,3 +46,27 @@ class Tree(object):
             count += 1
         self._depth = count
         return self._depth
+
+    def depth_first_preorder(self):
+        "return list of subtree and itself"
+        if self.nodes == None:
+            nodes = []
+            depth_first_preorder(self, nodes=nodes)
+            self.nodes = nodes
+        return self.nodes
+
+
+def depth_first_preorder(tree, nodes):
+    """
+    :param tree: Tree object
+    :param nodes: list of Tree object
+    :return: 
+    """
+    if tree==None:
+        return
+    if tree.num_children == 0:
+        depth_first_preorder(None, nodes)
+    else:
+        for child in tree.children:
+            depth_first_preorder(child, nodes)
+    nodes.append(tree)
