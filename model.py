@@ -422,7 +422,7 @@ class LSTMSentiment(nn.Module):
                     if self.cudaFlag:
                         target = target.cuda()
                     loss = loss + self.criterion(output, target)
-            loss = loss
+            loss = loss / n_subtree
             return output, loss
         else:
             _, hn = self.lstm.forward(vec)
