@@ -37,16 +37,15 @@ class SentimentTrainer(object):
             output, err = self.model.forward(tree, emb, training = True)
             #params = self.model.childsumtreelstm.getParameters()
             # params_norm = params.norm()
-            if self.args.model_name == 'lstm' or self.args.model_name == 'bilstm':
-                err = err/ (self.args.batchsize*(self.args.train_subtrees+1)) # + 0.5*self.args.reg*params_norm*params_norm # custom bias
-            else:
-                err = err / self.args.batchsize
+
+            err = err / self.args.batchsize
             loss += err.data[0] #
             err.backward()
             k += 1
             if k==self.args.batchsize:
                 for f in self.embedding_model.parameters():
-                    f.data.sub_(f.grad.data * self.args.emblr)
+                    f.data.sub_(f.grad.data * self.args.emblr + self.args.emblr*self.args.embwd*f.data)
+                    # https://stats.stackexchange.com/questions/29130/difference-between-neural-net-weight-decay-and-learning-rate
                 self.optimizer.step()
                 self.embedding_model.zero_grad()
                 self.optimizer.zero_grad()

@@ -394,12 +394,19 @@ class LSTMSentiment(nn.Module):
         if self.cudaFlag:
             loss = loss.cuda()
 
+        if self.train_subtrees == -1:
+            n_subtree = len(nodes)
+        else:
+            n_subtree = self.train_subtrees + 1
+
         if training:
-            for i in range(self.train_subtrees + 1):
+            for i in range(n_subtree):
                 if i == 0:
                     node = nodes[0]
-                else:
+                elif self.train_subtrees != -1:
                     node = nodes[int(math.ceil(np.random.uniform(0, len(nodes)-1)))]
+                else:
+                    node = nodes[i]
                 lo, hi = node.lo, node.hi
                 span_vec = vec[lo-1:hi] # [inclusive, excludsive)
                 _, hn = self.lstm.forward(span_vec)
