@@ -171,7 +171,8 @@ class TreeCompositionGRU(nn.Module):
                     # rel => self
                     # no state (no k)
                     _, _, rel = self.embedding_model.forward(None, None, self.rel_self)
-                    rel = rel[0]
+                    if self.rel_dim:
+                        rel = rel[0]
                     k = Var(torch.zeros(1,self.mem_dim))
                     if self.cudaFlag:
                         k = k.cuda()

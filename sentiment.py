@@ -298,6 +298,7 @@ def main():
             if dev_acc > max_dev:
                 max_dev = dev_acc
                 max_dev_epoch = epoch
+                print ('update max dev %f '%(dev_acc))
                 torch.save(model, args.saved + str(epoch) + '_model_' + filename)
                 torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
             gc.collect()
