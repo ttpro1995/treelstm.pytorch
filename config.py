@@ -126,6 +126,12 @@ def parse_args(type=0):
                             metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--wd', default=1e-4, type=float,
                             help='weight decay (default: 1e-4)')
+
+        parser.add_argument('--p_dropout_input', default=0.5, type=float,
+                            help='p_dropout_input')
+        parser.add_argument('--p_dropout_memory', default=0.1, type=float,
+                            help='p_dropout_memory')
+
         parser.add_argument('--reg', default=1e-4, type=float,
                             help='l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',

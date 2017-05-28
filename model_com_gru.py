@@ -11,10 +11,11 @@ class ChildGRU(nn.Module):
     """
     To replace composition lstm
     """
-    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, dropout=True):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, dropout=True, args = None):
         super(ChildGRU, self).__init__()
         self.args = config.parse_args(type=1)
         self.cudaFlag = cuda
+        self.args = args
         self.word_dim = word_dim
         self.tag_dim = tag_dim
         self.rel_dim = rel_dim
@@ -25,8 +26,8 @@ class ChildGRU(nn.Module):
             self.gru_cell = self.gru_cell.cuda()
 
         if dropout:
-            self.input_dropout = nn.Dropout(p=const.p_dropout_input)
-            self.memory_dropout = nn.Dropout(p=const.p_dropout_memory)
+            self.input_dropout = nn.Dropout(p=args.p_dropout_input)
+            self.memory_dropout = nn.Dropout(p=args.p_dropout_memory)
 
     def forward(self, word, tag, rel, k, h_prev, training=False):
         """
@@ -52,10 +53,11 @@ class ChildGRU(nn.Module):
 
 
 class TreeCompositionGRU(nn.Module):
-    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
-                 combine_head='mid', rel_self=None, dropout=True, attention = False):
+    def __init__(self, cuda, word_dim, tag_dim, rel_dim, mem_dim, criterion,
+                 combine_head='mid', rel_self=None, dropout=True, attention = False, args = None):
         super(TreeCompositionGRU, self).__init__()
         self.cudaFlag = cuda
+        self.args = args
         self.mem_dim = mem_dim
         self.in_dim = word_dim
         self.tag_dim = tag_dim
@@ -72,7 +74,7 @@ class TreeCompositionGRU(nn.Module):
             self.rel_self = self.rel_self.cuda()
 
         self.gru = ChildGRU(cuda, word_dim, tag_dim, rel_dim, mem_dim,
-                                                dropout=self.dropout)
+                                                dropout=self.dropout, args = args)
 
         print ('combine_head '+self.combine_head)
         self.criterion = criterion
@@ -181,12 +183,13 @@ class TreeCompositionGRU(nn.Module):
         return k
 #############################################
 class TreeCompositionGRUSentiment(nn.Module):
-    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, num_classes, criterion, dropout=True, combine_head = 'mid',
-                 rel_self = None):
+    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, num_classes, criterion, dropout=True, combine_head = 'mid',
+                 rel_self = None, args = None):
         super(TreeCompositionGRUSentiment, self).__init__()
+        self.args = args
         self.cudaFlag = cuda
-        self.tree_module = TreeCompositionGRU(cuda, in_dim, tag_dim, rel_dim, mem_dim, at_hid_dim, criterion,
-                                               dropout=dropout, rel_self = rel_self)
+        self.tree_module = TreeCompositionGRU(cuda, in_dim, tag_dim, rel_dim, mem_dim, criterion,
+                                               dropout=dropout, rel_self = rel_self, combine_head=combine_head, args = self.args)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=dropout)
         self.tree_module.set_output_module(self.output_module)
 

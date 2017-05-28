@@ -119,8 +119,9 @@ def main():
     model = TreeCompositionGRUSentiment(
                 args.cuda, args.input_dim,
                 args.tag_dim, args.rel_dim,
-        args.mem_dim, args.at_hid_dim ,3, criterion,
-        combine_head=args.combine_head, rel_self=rel_self_idx
+        args.mem_dim,3, criterion,
+        combine_head=args.combine_head, rel_self=rel_self_idx,
+        args = args
             )
 
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
