@@ -129,7 +129,7 @@ def main():
 
     embedding_model = EmbeddingModel(args.cuda, vocab.size(), tagvocab.size(), relvocab.size(), args.word_dim, args.tag_dim, args.rel_dim)
 
-    model.tree_module.set_embedding_model(embedding_model)
+    # model.tree_module.set_embedding_model(embedding_model)
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim=='adam':

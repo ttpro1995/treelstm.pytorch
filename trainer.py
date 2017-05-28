@@ -20,6 +20,7 @@ class SentimentTrainer(object):
         self.embedding_model = embedding_model
         self.plot_tree_grad = []
         self.plot_tree_grad_param = []
+        self.rel_self = model.rel_self  # rel self index
 
 
 
@@ -43,12 +44,16 @@ class SentimentTrainer(object):
             input = Var(sent)
             tag_input = Var(tag)
             rel_input = Var(rel)
+            rel_self = Var(torch.Tensor(self.model.rel_self).long())
             if self.args.cuda:
                 input = input.cuda()
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
+                rel_self = rel_self.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True)
+            rel_self = self.embedding_model.forward(None, None, rel_self)
+            rel_self = rel_self[2]
+            output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True, rel_self = rel_self)
             #params = self.model.get_tree_parameters()
             #params_norm = params.norm()
             err = err/self.args.batchsize #+ 0.5*self.args.reg*params_norm*params_norm # custom bias

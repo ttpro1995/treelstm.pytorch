@@ -113,16 +113,16 @@ class TreeCompositionGRU(nn.Module):
     def set_output_module(self, output_module):
         self.output_module = output_module
 
-    def forward(self, tree, w_emb, tag_emb, rel_emb, training=False):
+    def forward(self, tree, w_emb, tag_emb, rel_emb, training=False, rel_self = None):
         loss = Var(torch.zeros(1))  # init zero loss
         if self.cudaFlag:
             loss = loss.cuda()
 
         for idx in xrange(tree.num_children):
-            _, child_loss = self.forward(tree.children[idx], w_emb, tag_emb, rel_emb, training)
+            _, child_loss = self.forward(tree.children[idx], w_emb, tag_emb, rel_emb, training, rel_self)
             loss = loss + child_loss
 
-        tree.state = self.node_forward(tree, w_emb, tag_emb, rel_emb, training)
+        tree.state = self.node_forward(tree, w_emb, tag_emb, rel_emb, training, rel_self)
 
         if self.output_module != None:
             output = self.output_module.forward(tree.state, training)
@@ -134,7 +134,7 @@ class TreeCompositionGRU(nn.Module):
                 loss = loss + self.criterion(output, target)
         return tree.state, loss
 
-    def node_forward(self, tree, word_emb, tag_emb, rel_emb, training=False):
+    def node_forward(self, tree, word_emb, tag_emb, rel_emb, training=False, rel_self= None):
         """
         words, tags, rels are embedding of child node
         """
@@ -170,7 +170,7 @@ class TreeCompositionGRU(nn.Module):
                 else:
                     # rel => self
                     # no state (no k)
-                    _, _, rel = self.embedding_model.forward(None, None, self.rel_self)
+                    rel = rel_self
                     if self.rel_dim:
                         rel = rel[0]
                     k = Var(torch.zeros(1,self.mem_dim))
@@ -189,6 +189,7 @@ class TreeCompositionGRUSentiment(nn.Module):
         super(TreeCompositionGRUSentiment, self).__init__()
         self.args = args
         self.cudaFlag = cuda
+        self.rel_self = rel_self
         self.tree_module = TreeCompositionGRU(cuda, in_dim, tag_dim, rel_dim, mem_dim, criterion,
                                                dropout=dropout, rel_self = rel_self, combine_head=combine_head, args = self.args)
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=dropout)
@@ -197,8 +198,8 @@ class TreeCompositionGRUSentiment(nn.Module):
     def get_tree_parameters(self):
         return self.tree_module.getParameters()
 
-    def forward(self, tree, sent_emb, tag_emb, rel_emb, training=False):
-        tree_state, loss = self.tree_module(tree, sent_emb, tag_emb, rel_emb, training)
+    def forward(self, tree, sent_emb, tag_emb, rel_emb, training=False, rel_self = None):
+        tree_state, loss = self.tree_module(tree, sent_emb, tag_emb, rel_emb, training, rel_self)
         output = tree.output
         return output, loss
 

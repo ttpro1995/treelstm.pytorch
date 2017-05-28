@@ -80,6 +80,22 @@ def count_param(model):
     print ('sum', sum_param)
     print('____________')
 
+def count_param_v2(params):
+    '''
+
+    :param params: model.parameters()
+    :return: nothjing. It print stdout
+    '''
+    print('_param count_v2_')
+    sum_param = 0
+    for p in params:
+        sum_param+= p.numel()
+        print (p.size())
+    # emb_sum = params[0].numel()
+    # sum_param-= emb_sum
+    print ('sum', sum_param)
+    print('____________')
+
 
 def mkdir_p(mypath):
     '''Creates a directory. equivalent to using mkdir -p on the command line'''
