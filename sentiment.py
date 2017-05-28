@@ -232,11 +232,15 @@ def main():
         max_dev_epoch = 0
         filename = args.name + '.pth'
         for epoch in range(args.epochs):
-            train_loss = trainer.train(train_dataset)
+            train_loss_while_training = trainer.train(train_dataset)
+            train_loss, train_pred = trainer.test(train_dataset)
             dev_loss, dev_pred = trainer.test(dev_dataset)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
-            print('==> Train loss   : %f \t' % train_loss, end="")
+            train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
+            print('==> Train loss   : %f \t' % train_loss_while_training, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
+            print ('Epoch %d dev percentage %f ' %(epoch, dev_acc))
+            print('Train acc %f '%(train_acc))
             if dev_acc > max_dev:
                 print ('update best dev acc %f ' %(dev_acc))
                 max_dev = dev_acc
