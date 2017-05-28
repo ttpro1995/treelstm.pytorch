@@ -121,11 +121,19 @@ def parse_args(type=0):
         parser.add_argument('--emblr', default=0.05, type=float,
                             metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--tag_emblr', default=0.05, type=float,
-                            metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
+                            metavar='tag_EMLR', help='initial word embedding learning rate (0 is turning off)')
         parser.add_argument('--rel_emblr', default=0.05, type=float,
-                            metavar='EMLR', help='initial word embedding learning rate (0 is turning off)')
+                            metavar='rel_EMLR', help='initial word embedding learning rate (0 is turning off)')
+
+
         parser.add_argument('--wd', default=1e-4, type=float,
                             help='weight decay (default: 1e-4)')
+        parser.add_argument('--embwd', default=1e-4, type=float,
+                            help='embedding weight decay (default: 1e-4)')
+        parser.add_argument('--tag_embwd', default=0, type=float,
+                            help='tag embedding weight decay (default: 0)')
+        parser.add_argument('--rel_embwd', default=0, type=float,
+                            help='rel embedding weight decay (default: 0)')
 
         parser.add_argument('--p_dropout_input', default=0.5, type=float,
                             help='p_dropout_input')
