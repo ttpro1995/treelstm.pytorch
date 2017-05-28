@@ -134,6 +134,18 @@ def main():
     elif args.optim=='adagrad':
         # optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
         optimizer = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    elif args.optim=='adam_combine':
+        optimizer = optim.Adam([
+                {'params': model.parameters(), 'lr':args.lr, 'weight_decay':args.wd },
+                {'params': embedding_model.parameters(), 'lr': args.emblr, 'weight_decay':args.embwd}
+            ])
+        args.manually_emb = 0
+    elif args.optim == 'adagrad_combine':
+        optimizer = optim.Adagrad([
+                {'params': model.parameters(), 'lr':args.lr, 'weight_decay':args.wd },
+                {'params': embedding_model.parameters(), 'lr': args.emblr, 'weight_decay':args.embwd}
+            ])
+        args.manually_emb = 0
     metrics = Metrics(args.num_classes)
 
     utils.count_param(model)
@@ -150,6 +162,11 @@ def main():
         emb_vector = 'paragram_300_sl999'
         emb_vector_path = os.path.join(args.paragram, emb_vector)
         assert os.path.isfile(emb_vector_path+'.txt')
+    elif args.embedding == 'paragram_xxl':
+        emb_torch = 'sst_embed_paragram_xxl.pth'
+        emb_vector = 'paragram-phrase-XXL'
+        emb_vector_path = os.path.join(args.paragram, emb_vector)
+        assert os.path.isfile(emb_vector_path + '.txt')
     else:
         assert False
 

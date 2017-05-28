@@ -103,12 +103,16 @@ def parse_args(type=0):
                             metavar='EMLR', help='initial embedding learning rate')
         parser.add_argument('--wd', default=1e-4, type=float,
                             help='weight decay (default: 1e-4)')
-        parser.add_argument('--emwd', default=0, type=float,
+        parser.add_argument('--embwd', default=0, type=float,
                             help='weight decay for embedding(default: 1e-4)')
         parser.add_argument('--reg', default=1e-4, type=float,
                             help='l2 regularization (default: 1e-4)')
+
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
+        parser.add_argument('--manually_emb', default=1, type=int,
+                            help='manually update embedding (default: 1)')
+
         parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: random)')
         parser.add_argument('--fine_grain', default=False, type=bool,
