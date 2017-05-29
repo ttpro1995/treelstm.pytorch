@@ -104,7 +104,7 @@ def parse_args(type=0):
         parser.add_argument('--wd', default=1e-4, type=float,
                             help='weight decay (default: 1e-4)')
         parser.add_argument('--embwd', default=0, type=float,
-                            help='weight decay for embedding(default: 1e-4)')
+                            help='weight decay for embedding(default: 0)')
         parser.add_argument('--reg', default=1e-4, type=float,
                             help='l2 regularization (default: 1e-4)')
 
