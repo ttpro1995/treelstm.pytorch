@@ -44,8 +44,13 @@ class SentimentTrainer(object):
             k += 1
             if k==self.args.batchsize:
                 if self.args.manually_emb == 1:
-                    for f in self.embedding_model.parameters():
-                        f.data.sub_(f.grad.data * self.args.emblr + self.args.emblr*self.args.embwd*f.data)
+                    if self.args.embwd == 0: # save time on calculate 0 function
+                        for f in self.embedding_model.parameters():
+                            f.data.sub_(f.grad.data * self.args.emblr)
+                    else:
+                        for f in self.embedding_model.parameters():
+                            f.data.sub_(f.grad.data * self.args.emblr + self.args.emblr*self.args.embwd*f.data)
+
                     # https://stats.stackexchange.com/questions/29130/difference-between-neural-net-weight-decay-and-learning-rate
                 self.optimizer.step()
                 self.embedding_model.zero_grad()

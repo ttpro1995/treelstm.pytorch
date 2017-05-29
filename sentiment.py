@@ -203,7 +203,7 @@ def main():
 
     # create trainer object for training and testing
     if args.model_name == 'dependency' or args.model_name == 'constituency':
-        trainer = SentimentTrainer(args, model, embedding_model, None, optimizer)
+        trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
     elif args.model_name == 'lstm' or args.model_name == 'bilstm':
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
 
