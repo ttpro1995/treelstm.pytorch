@@ -81,8 +81,8 @@ def parse_args(type=0):
                             help='path to dataset')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
-        parser.add_argument('--embedding', default='paragram',
-                            help='embedding type paragram or glove (default: glove)')
+        parser.add_argument('--embedding', default='glove',
+                            help='embedding type paragram or paragram_xxl or glove (default: glove)')
         parser.add_argument('--paragram', default='/media/vdvinh/25A1FEDE380BDADA/data/john',
                             help='directory with paragram embeddings')
 
