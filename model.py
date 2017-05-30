@@ -378,6 +378,7 @@ class LSTMSentiment(nn.Module):
         self.bidirectional = False
         self.criterion = criterion
         self.train_subtrees = train_subtrees
+        self.num_classes = num_classes
         if model_name == 'bilstm':
             self.bidirectional = True
             self.output_module = SentimentModule(cuda, 2*mem_dim, num_classes, dropout=True)
@@ -387,6 +388,15 @@ class LSTMSentiment(nn.Module):
         if self.cudaFlag:
             self.lstm = self.lstm.cuda()
 
+    def getParameters(self):
+        '''
+        flatten parameter
+        :return:
+        '''
+        params = list(self.parameters())
+        one_dim = [p.view(p.numel()) for p in params]
+        params = F.torch.cat(one_dim)
+        return params
 
     def forward(self, tree, vec, training = False):
         nodes = tree.depth_first_preorder()
@@ -418,7 +428,7 @@ class LSTMSentiment(nn.Module):
                 output = self.output_module.forward(h, training)
 
                 if training and node.gold_label != None:
-                    target = Var(utils.map_label_to_target_sentiment(node.gold_label))
+                    target = Var(utils.map_label_to_target_sentiment(node.gold_label, self.num_classes))
                     if self.cudaFlag:
                         target = target.cuda()
                     loss = loss + self.criterion(output, target)

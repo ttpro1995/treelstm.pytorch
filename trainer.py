@@ -16,6 +16,10 @@ class SentimentTrainer(object):
         self.criterion  = criterion
         self.optimizer  = optimizer
         self.epoch      = 0
+        self.emb_params_init = None
+
+    def set_initial_emb(self, emb):
+        self.emb_params_init = emb
 
     # helper function for training
     def train(self, dataset):
@@ -35,10 +39,19 @@ class SentimentTrainer(object):
                 target = target.cuda()
             emb = F.torch.unsqueeze(self.embedding_model(input), 1)
             output, err = self.model.forward(tree, emb, training = True)
+            if self.args.reg > 0:
+                emb_params = list(self.embedding_model.parameters())[0]
+                emb_params_norm = (emb_params.data - self.emb_params_init).norm()
+                l2_emb_params = 0.5 * self.args.reg* emb_params_norm * emb_params_norm
+                err = (err + l2_emb_params) / self.args.batchsize
+            else:
+                err = err / self.args.batchsize
+
+            # err = err / self.args.batchsize
             #params = self.model.childsumtreelstm.getParameters()
             # params_norm = params.norm()
 
-            err = err / self.args.batchsize
+
             loss += err.data[0] #
             err.backward()
             k += 1
@@ -78,7 +91,8 @@ class SentimentTrainer(object):
             output, _ = self.model(tree, emb) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
-            output[:,1] = -9999 # no need middle (neutral) value
+            if dataset.num_classes == 3:
+                output[:,1] = -9999 # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             predictions[idx] = pred.data.cpu()[0][0]
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))

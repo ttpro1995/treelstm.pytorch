@@ -4,6 +4,7 @@ import os, math
 import torch
 from tree import Tree
 from vocab import Vocab
+import torch
 
 # loading GLOVE word vectors
 # if .pth file is found, will load that
@@ -61,10 +62,16 @@ def map_label_to_target(label,num_classes):
         target[0][ceil-1] = label - floor
     return target
 
-def map_label_to_target_sentiment(label, num_classes = 0 ,fine_grain = False):
+def map_label_to_target_sentiment(label, num_classes = 3 ,fine_grain = False):
     # num_classes not use yet
     target = torch.LongTensor(1)
-    target[0] = int(label) # nothing to do here as we preprocess data
+    if num_classes == 3:
+        target[0] = int(label) # nothing to do here as we preprocess data
+    elif num_classes == 2: # so this case have 2 output
+        if label == 2:
+            target[0] = int(1)
+        else:
+            target[0] = int(label)
     return target
 
 def count_param(model):
@@ -99,3 +106,14 @@ def mkdir_p(mypath):
         if exc.errno == EEXIST and path.isdir(mypath):
             pass
         else: raise
+
+def flatParameters(model):
+    """
+    flatten param into 1 dimention
+    :param model:
+    :return:
+    """
+    params = list(model.parameters())
+    one_dim = [p.view(p.numel()) for p in params]
+    params = torch.cat(one_dim)
+    return params

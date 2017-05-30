@@ -105,8 +105,8 @@ def parse_args(type=0):
                             help='weight decay (default: 1e-4)')
         parser.add_argument('--embwd', default=0, type=float,
                             help='weight decay for embedding(default: 0)')
-        parser.add_argument('--reg', default=1e-4, type=float,
-                            help='l2 regularization (default: 1e-4)')
+        parser.add_argument('--reg', default=0, type=float,
+                            help='l2 regularization (default: 0)')
 
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
@@ -117,6 +117,8 @@ def parse_args(type=0):
                             help='random seed (default: random)')
         parser.add_argument('--fine_grain', default=False, type=bool,
                             help='fine grained (default False)')
+        parser.add_argument('--num_classes', default=0, type=int,
+                            help='num_classes to classify (default 0, meaning auto depend on fine_grain)')
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
         cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')
         cuda_parser.add_argument('--no-cuda', dest='cuda', action='store_false')

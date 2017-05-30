@@ -50,11 +50,15 @@ def main():
         elif args.model_name == 'bilstm':
             args.mem_dim = 168
 
+    if args.num_classes == 0:
+        if args.fine_grain:
+            args.num_classes = 5 # 0 1 2 3 4
+        else:
+            args.num_classes = 3 # 0 1 2 (1 neutral)
+    elif args.num_classes == 2:
+        assert False # this will not work
+        assert not args.fine_grain
 
-    if args.fine_grain:
-        args.num_classes = 5 # 0 1 2 3 4
-    else:
-        args.num_classes = 3 # 0 1 2 (1 neutral)
     args.cuda = args.cuda and torch.cuda.is_available()
     # args.cuda = False
     print(args)
@@ -129,26 +133,7 @@ def main():
 
     if args.cuda:
         model.cuda(), criterion.cuda()
-    if args.optim=='adam':
-        optimizer   = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
-    elif args.optim=='adagrad':
-        # optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
-        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
-    elif args.optim=='adam_combine':
-        optimizer = optim.Adam([
-                {'params': model.parameters(), 'lr':args.lr, 'weight_decay':args.wd },
-                {'params': embedding_model.parameters(), 'lr': args.emblr, 'weight_decay':args.embwd}
-            ])
-        args.manually_emb = 0
-    elif args.optim == 'adagrad_combine':
-        optimizer = optim.Adagrad([
-                {'params': model.parameters(), 'lr':args.lr, 'weight_decay':args.wd },
-                {'params': embedding_model.parameters(), 'lr': args.emblr, 'weight_decay':args.embwd}
-            ])
-        args.manually_emb = 0
-    metrics = Metrics(args.num_classes)
 
-    utils.count_param(model)
 
     # for words common to dataset vocab and GLOVE, use GLOVE vectors
     # for other words in dataset vocab, use random normal vectors
@@ -197,15 +182,39 @@ def main():
     # plug these into embedding matrix inside model
     if args.cuda:
         emb = emb.cuda()
-
-    # model.childsumtreelstm.emb.state_dict()['weight'].copy_(emb)
     embedding_model.state_dict()['weight'].copy_(emb)
+
+    if args.optim=='adam':
+        optimizer   = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    elif args.optim=='adagrad':
+        # optimizer   = optim.Adagrad(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
+    elif args.optim=='adam_combine':
+        optimizer = optim.Adam([
+                {'params': model.parameters(), 'lr':args.lr, 'weight_decay':args.wd },
+                {'params': embedding_model.parameters(), 'lr': args.emblr, 'weight_decay':args.embwd}
+            ])
+        args.manually_emb = 0
+    elif args.optim == 'adagrad_combine':
+        optimizer = optim.Adagrad([
+                {'params': model.parameters(), 'lr':args.lr, 'weight_decay':args.wd },
+                {'params': embedding_model.parameters(), 'lr': args.emblr, 'weight_decay':args.embwd}
+            ])
+        args.manually_emb = 0
+    elif args.optim == 'adam_combine_v2':
+        model.embedding_model = embedding_model
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+        args.manually_emb = 0
+    metrics = Metrics(args.num_classes)
+    utils.count_param(model)
 
     # create trainer object for training and testing
     if args.model_name == 'dependency' or args.model_name == 'constituency':
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
     elif args.model_name == 'lstm' or args.model_name == 'bilstm':
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
+
+    trainer.set_initial_emb(emb)
 
     # trainer = SentimentTrainer(args, model, embedding_model ,criterion, optimizer)
 
