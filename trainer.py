@@ -39,13 +39,25 @@ class SentimentTrainer(object):
                 target = target.cuda()
             emb = F.torch.unsqueeze(self.embedding_model(input), 1)
             output, err = self.model.forward(tree, emb, training = True)
-            if self.args.reg > 0:
+            if self.args.model_name == 'lstm' or self.args.model_name == 'bilstm':
+                if self.args.train_subtrees == -1:
+                    n_subtrees = len(tree.depth_first_preorder())
+                else:
+                    n_subtrees = self.args.train_subtrees
+                batch_size = self.args.batchsize * n_subtrees
+            else:
+                batch_size = self.args.batchsize
+
+            if self.args.reg > 0 or self.args.embreg > 0:
+                params = self.model.getParameters()
+                params_norm = params.data.norm()
+                l2_model = 0.5*self.args.reg*params_norm*params_norm
                 emb_params = list(self.embedding_model.parameters())[0]
                 emb_params_norm = (emb_params.data - self.emb_params_init).norm()
-                l2_emb_params = 0.5 * self.args.reg* emb_params_norm * emb_params_norm
-                err = (err + l2_emb_params) / self.args.batchsize
+                l2_emb_params = 0.5 * self.args.embreg* emb_params_norm * emb_params_norm
+                err = (err + l2_model + l2_emb_params) / batch_size
             else:
-                err = err / self.args.batchsize
+                err = err / batch_size
 
             # err = err / self.args.batchsize
             #params = self.model.childsumtreelstm.getParameters()

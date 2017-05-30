@@ -107,6 +107,8 @@ def parse_args(type=0):
                             help='weight decay for embedding(default: 0)')
         parser.add_argument('--reg', default=0, type=float,
                             help='l2 regularization (default: 0)')
+        parser.add_argument('--embreg', default=0, type=float,
+                            help='l2 regularization (default: 0)')
 
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')

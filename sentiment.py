@@ -286,10 +286,12 @@ def main():
 if __name__ == "__main__":
     args = parse_args(type=1)
     # log to console and file
-    logger1 = log_util.create_logger(os.path.join('logs',args.name+'.log'), print_console=True)
+    logger1 = log_util.create_logger(os.path.join('logs',args.name), print_console=True)
     logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)
     sys.stdout = s1
     print ('_________________________________start___________________________________')
     main()
+    log_link = log_util.up_gist(os.path.join('logs',args.name+'.log'), args.name, __file__)
+    print(log_link)
