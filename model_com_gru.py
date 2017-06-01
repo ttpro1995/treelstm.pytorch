@@ -147,9 +147,21 @@ class TreeCompositionGRU(nn.Module):
         h = h_zero
 
         if tree.num_children == 0:
+            # only parent
+            tag = None
+            if self.tag_dim:
+                tag = tag_emb[tree.idx - 1]
+            rel = rel_self
+            if self.rel_dim:
+                rel = rel[0]
+            k = Var(torch.zeros(1, self.mem_dim))
+            if self.cudaFlag:
+                k = k.cuda()
+            h = self.gru.forward(
+                word_emb[tree.idx - 1], tag, rel, k, h, training=training
+            )
             return h
         else:
-
             list_node = tree.children
             list_node.append(tree)
             if self.combine_head == 'mid':
