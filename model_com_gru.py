@@ -38,15 +38,18 @@ class ChildGRU(nn.Module):
 
         if self.dropout:
             word = self.input_dropout(word)
-            tag = self.input_dropout(tag)
+            if self.tag_dim:
+                tag = self.input_dropout(tag)
             h_prev = self.memory_dropout(h_prev)
             k = self.memory_dropout(k)
 
-        if self.rel_dim:
+        if self.rel_dim and self.tag_dim:
             rel = self.input_dropout(rel)
             x = torch.cat([word, tag, rel, k], 1)
-        else:
+        elif self.tag_dim and not self.rel_dim:
             x = torch.cat([word, tag, k], 1)
+        elif not self.tag_dim and not self.rel_dim:
+            x = torch.cat([word, k], 1)
 
         h = self.gru_cell.forward(x, h_prev)
         return h

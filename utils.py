@@ -225,3 +225,38 @@ def save_config(args, path='./plot/'):
         f.write('\n\n' + str(args))
         f.close()
         print ('args.txt file already exist, please, do manual check')
+
+def print_tree_file(file_obj, vocab, tag_vocab, rel_vocab, word, tag, rel, tree, level = 0):
+    """
+    Print tree for debug
+    :param vocab:
+    :param input:
+    :param tree:
+    :param level:
+    :return:
+    """
+    indent = ''
+    leaf_range = len(word)
+    for i in range(level):
+        indent += '| '
+    line = indent + str(tree.idx) + ' '
+    idx = tree.idx
+    # tag
+    line += str(tag_vocab.idxToLabel[tag[idx - 1]]).upper()+' '
+
+    # rel
+    line += str(tag_vocab.idxToLabel[rel[idx - 1]]).upper() + ' '
+
+    # label
+    if tree.gold_label != None:
+        line += str(tree.gold_label) + ' '
+
+
+    # word
+    if tree.idx -1 < leaf_range:
+        line += str(vocab.idxToLabel[word[tree.idx-1]])+' '
+
+    line += '  ' + '\n'
+    file_obj.write(line)
+    for i in xrange(tree.num_children):
+        print_tree_file(file_obj, vocab, tag_vocab, rel_vocab, word, tag, rel, tree.children[i], level+1)

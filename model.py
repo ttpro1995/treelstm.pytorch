@@ -6,8 +6,10 @@ import Constants
 import utils
 
 # module for childsumtreelstm
+
+# module for childsumtreelstm
 class ChildSumTreeLSTM(nn.Module):
-    def __init__(self, cuda, vocab_size, in_dim, mem_dim, criterion):
+    def __init__(self, cuda, in_dim, mem_dim, criterion):
         super(ChildSumTreeLSTM, self).__init__()
         self.cudaFlag = cuda
         self.in_dim = in_dim
@@ -15,38 +17,26 @@ class ChildSumTreeLSTM(nn.Module):
 
         # self.emb = nn.Embedding(vocab_size,in_dim,
         #                         padding_idx=Constants.PAD)
+        # torch.manual_seed(123)
 
         self.ix = nn.Linear(self.in_dim,self.mem_dim)
         self.ih = nn.Linear(self.mem_dim,self.mem_dim)
 
+        self.fh = nn.Linear(self.mem_dim, self.mem_dim)
         self.fx = nn.Linear(self.in_dim,self.mem_dim)
-        self.fh = nn.Linear(self.mem_dim,self.mem_dim)
-
-        self.ox = nn.Linear(self.in_dim,self.mem_dim)
-        self.oh = nn.Linear(self.mem_dim,self.mem_dim)
 
         self.ux = nn.Linear(self.in_dim,self.mem_dim)
         self.uh = nn.Linear(self.mem_dim,self.mem_dim)
 
-
-        if self.cudaFlag:
-            self.ix = self.ix.cuda()
-            self.ih = self.ih.cuda()
-
-            self.fx = self.fx.cuda()
-            self.fh = self.fh.cuda()
-
-            self.ox = self.ox.cuda()
-            self.oh = self.oh.cuda()
-
-            self.ux = self.ux.cuda()
-            self.uh = self.uh.cuda()
+        self.ox = nn.Linear(self.in_dim,self.mem_dim)
+        self.oh = nn.Linear(self.mem_dim,self.mem_dim)
 
         self.criterion = criterion
         self.output_module = None
 
     def set_output_module(self, output_module):
         self.output_module = output_module
+
 
     def getParameters(self):
         """
@@ -56,14 +46,23 @@ class ChildSumTreeLSTM(nn.Module):
         :return: 1d tensor
         """
         params = []
-        for m in [self.ix, self.ih, self.fx, self.fh, self.ox, self.oh, self.ux, self.uh]:
-            # we do not get param of output module
-            l = list(m.parameters())
-            params.extend(l)
+
+        l = list(self.parameters())
+        params.extend(l)
 
         one_dim = [p.view(p.numel()) for p in params]
         params = F.torch.cat(one_dim)
         return params
+
+    def getGrad(self):
+        params = []
+
+        l = list(self.parameters())
+        params.extend(l)
+
+        one_dim = [p.grad.view(p.grad.numel()) for p in params]
+        grad = F.torch.cat(one_dim)
+        return grad
 
 
     def node_forward(self, inputs, child_c, child_h):
@@ -101,14 +100,13 @@ class ChildSumTreeLSTM(nn.Module):
         tree.state = self.node_forward(embs[tree.idx-1], child_c, child_h)
 
         if self.output_module != None:
-            output = self.output_module.forward(tree.state[0], training)
+            output = self.output_module.forward(tree.state[1], training)
             tree.output = output
             if training and tree.gold_label != None:
                 target = Var(utils.map_label_to_target_sentiment(tree.gold_label))
                 if self.cudaFlag:
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
-
         return tree.state, loss
 
     def get_child_states(self, tree):
@@ -149,30 +147,33 @@ class SentimentModule(nn.Module):
             out = F.log_softmax(self.l1(vec))
         return out
 
+#############################################
 class TreeLSTMSentiment(nn.Module):
-    def __init__(self, cuda, vocab_size, tag_vocabsize, rel_vocabsize , in_dim, mem_dim, num_classes, criterion):
+    def __init__(self, cuda, in_dim, tag_dim, rel_dim, mem_dim, num_classes, criterion, dropout=True, args = None):
         super(TreeLSTMSentiment, self).__init__()
+        self.args = args
         self.cudaFlag = cuda
-        self.tree_module = ChildSumTreeLSTM(cuda, vocab_size, in_dim, mem_dim, criterion)
-        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
+        self.tag_dim = tag_dim
+        self.rel_dim = rel_dim
+        self.in_dim = in_dim + tag_dim + rel_dim
+        self.mem_dim = mem_dim
+        self.tree_module = ChildSumTreeLSTM(cuda, self.in_dim, self.mem_dim, criterion)
+        self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=dropout)
         self.tree_module.set_output_module(self.output_module)
-
-        # word embeddiing
-        self.word_embedding = nn.Embedding(vocab_size,in_dim,
-                                padding_idx=Constants.PAD)
-        # embedding for postag and rel
-        self.tag_emb = nn.Embedding(tag_vocabsize, in_dim)
-        self.rel_emb = nn.Embedding(rel_vocabsize, in_dim)
 
     def get_tree_parameters(self):
         return self.tree_module.getParameters()
 
-    def forward(self, tree, sent_inputs, tag_inputs, rel_inputs, training = False):
-        sent_emb = F.torch.unsqueeze(self.word_embedding.forward(sent_inputs), 1)
-        tag_emb = F.torch.unsqueeze(self.tag_emb.forward(tag_inputs), 1)
-        rel_emb = F.torch.unsqueeze(self.rel_emb.forward(rel_inputs), 1)
-        tree_state, loss = self.tree_module(tree, sent_emb, training)
-        state, hidden = tree_state
+    def forward(self, tree, sent_emb, tag_emb, rel_emb, training=False, rel_self = None):
+        if self.tag_dim and self.rel_dim:
+            in_emb = torch.cat([sent_emb, tag_emb, rel_emb], 2)
+        elif self.tag_dim:
+            in_emb = torch.cat([sent_emb, tag_emb], 2)
+        elif self.rel_dim:
+            in_emb = torch.cat([sent_emb, rel_emb], 2)
+        else:
+            in_emb = sent_emb
+        tree_state, loss = self.tree_module(tree, in_emb, training = training)
         output = tree.output
         return output, loss
 

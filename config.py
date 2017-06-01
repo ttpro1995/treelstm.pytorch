@@ -96,7 +96,7 @@ def parse_args(type=0):
 
         args = parser.parse_args()
         return args
-    else:
+    elif type == 1:
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analyusis on Dependency Trees')
         parser.add_argument('--data', default='data/sst/',
                             help='path to dataset')
@@ -104,6 +104,14 @@ def parse_args(type=0):
                             help='path to save location')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
+        parser.add_argument('--model_name', default='com_gru',
+                            help='model name com_gru or childsumtree')
+
+        parser.add_argument('--embedding', default='glove',
+                            help='embedding type paragram or glove (default: glove)')
+        parser.add_argument('--paragram', default='/media/vdvinh/25A1FEDE380BDADA/data/john',
+                            help='directory with paragram embeddings')
+
         parser.add_argument('--tag_glove', default=0, type=int,
                             help='use tag embedding pretrained by glove')
         parser.add_argument('--rel_glove', default=0, type=int,
@@ -176,6 +184,8 @@ def parse_args(type=0):
 
         args = parser.parse_args()
         return args
+    else:
+        assert False
 
 def print_config(args):
     print ('name ' + str(args.name))

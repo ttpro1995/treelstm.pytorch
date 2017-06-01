@@ -116,13 +116,18 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     # initialize model, criterion/loss_function, optimizer
-    model = TreeCompositionGRUSentiment(
-                args.cuda, args.input_dim,
-                args.tag_dim, args.rel_dim,
-        args.mem_dim,3, criterion,
-        combine_head=args.combine_head, rel_self=rel_self_idx,
-        args = args
-            )
+    if args.model_name == 'com_gru':
+        model = TreeCompositionGRUSentiment(
+                    args.cuda, args.input_dim,
+                    args.tag_dim, args.rel_dim,
+            args.mem_dim,3, criterion,
+            combine_head=args.combine_head, rel_self=rel_self_idx,
+            args = args
+                )
+    elif args.model_name == 'childsumtree':
+        model = TreeLSTMSentiment(args.cuda, args.input_dim,
+                                  args.tag_dim, args.rel_dim,
+                                  args.mem_dim, 3, criterion, args = args)
 
     # embedding_model = nn.Embedding(vocab.size(), args.input_dim,
     #                             padding_idx=Constants.PAD)
@@ -152,14 +157,34 @@ def main():
 
     utils.count_param(model)
 
+    # option for embedding goes here
+    #TODO: switch between paragram and glove
+    if args.embedding == 'glove':
+        emb_torch = 'sst_embed.pth'
+        emb_vector = 'glove.840B.300d'
+        emb_vector_path = os.path.join(args.glove, emb_vector)
+        assert os.path.isfile(emb_vector_path+'.txt')
+    elif args.embedding == 'paragram':
+        emb_torch = 'sst_embed_paragram.pth'
+        emb_vector = 'paragram_300_sl999'
+        emb_vector_path = os.path.join(args.paragram, emb_vector)
+        assert os.path.isfile(emb_vector_path+'.txt')
+    elif args.embedding == 'paragram_xxl':
+        emb_torch = 'sst_embed_paragram_xxl.pth'
+        emb_vector = 'paragram-phrase-XXL'
+        emb_vector_path = os.path.join(args.paragram, emb_vector)
+        assert os.path.isfile(emb_vector_path + '.txt')
+    else:
+        assert False
+
     # for words common to dataset vocab and GLOVE, use GLOVE vectors
     # for other words in dataset vocab, use random normal vectors
-    emb_file = os.path.join(args.data, 'sst_embed.pth')
+    emb_file = os.path.join(args.data, emb_torch)
     if os.path.isfile(emb_file):
         emb = torch.load(emb_file)
     else:
         # load glove embeddings and vocab
-        glove_vocab, glove_emb = load_word_vectors(os.path.join(args.glove,'glove.840B.300d'))
+        glove_vocab, glove_emb = load_word_vectors(emb_vector_path)
         print('==> GLOVE vocabulary size: %d ' % glove_vocab.size())
         emb = torch.zeros(vocab.size(),glove_emb.size(1))
         # zero out the embeddings for padding and other special words if they are absent in vocab
@@ -269,6 +294,12 @@ def main():
 
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
+    if mode =='TREE':
+        tree, sent, tag, rel, label = dev_dataset[24]
+        treefile = open('print_tree.log', 'w')
+        utils.print_tree_file(treefile, vocab, tagvocab, relvocab, sent, tag, rel, tree, 0)
+        treefile.close()
+        quit()
     elif mode == "EXPERIMENT":
         max_dev = 0
         max_dev_epoch = 0
@@ -341,3 +372,5 @@ if __name__ == "__main__":
     sys.stdout = s1
     print ('_________________________________start___________________________________')
     main()
+    link = log_util.up_gist(log_dir+'.log', args.name, __file__)
+    print(link)

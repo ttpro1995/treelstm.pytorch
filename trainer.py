@@ -20,7 +20,8 @@ class SentimentTrainer(object):
         self.embedding_model = embedding_model
         self.plot_tree_grad = []
         self.plot_tree_grad_param = []
-        self.rel_self = model.rel_self  # rel self index
+        if self.args.model_name == 'com_gru':
+            self.rel_self = model.rel_self  # rel self index
 
 
 
@@ -44,15 +45,20 @@ class SentimentTrainer(object):
             input = Var(sent)
             tag_input = Var(tag)
             rel_input = Var(rel)
-            rel_self = Var(torch.Tensor(self.model.rel_self).long())
+            if self.args.model_name == 'com_gru':
+                rel_self = Var(torch.Tensor(self.model.rel_self).long())
             if self.args.cuda:
                 input = input.cuda()
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
-                rel_self = rel_self.cuda()
+                if self.args.model_name == 'com_gru':
+                    rel_self = rel_self.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            rel_self = self.embedding_model.forward(None, None, rel_self)
-            rel_self = rel_self[2]
+            if self.args.model_name == 'com_gru':
+                rel_self = self.embedding_model.forward(None, None, rel_self)
+                rel_self = rel_self[2]
+            else:
+                rel_self = None
             output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True, rel_self = rel_self)
             #params = self.model.get_tree_parameters()
             #params_norm = params.norm()
@@ -118,13 +124,22 @@ class SentimentTrainer(object):
             tag_input = Var(tag, volatile=True)
             rel_input = Var(rel, volatile=True)
             target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain), volatile=True)
+            if self.args.model_name == 'com_gru':
+                rel_self = Var(torch.Tensor(self.model.rel_self).long())
             if self.args.cuda:
                 input = input.cuda()
                 tag_input = tag_input.cuda()
                 rel_input = rel_input.cuda()
                 target = target.cuda()
+                if self.args.model_name == 'com_gru':
+                    rel_self = rel_self.cuda()
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
-            output, _ = self.model(tree, sent_emb, tag_emb, rel_emb) # size(1,5)
+            if self.args.model_name == 'com_gru':
+                rel_self = self.embedding_model.forward(None, None, rel_self)
+                rel_self = rel_self[2]
+            else:
+                rel_self = 0
+            output, _ = self.model(tree, sent_emb, tag_emb, rel_emb, rel_self = rel_self) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
             output[:,1] = -9999 # no need middle (neutral) value
