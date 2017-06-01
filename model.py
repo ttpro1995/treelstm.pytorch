@@ -408,7 +408,7 @@ class LSTMSentiment(nn.Module):
             n_subtree = len(nodes)
         else:
             n_subtree = self.train_subtrees + 1
-
+        discard_subtree = 0 # trees are discard because neutral
         if training:
             for i in range(n_subtree):
                 if i == 0:
@@ -428,12 +428,18 @@ class LSTMSentiment(nn.Module):
                 output = self.output_module.forward(h, training)
 
                 if training and node.gold_label != None:
-                    target = Var(utils.map_label_to_target_sentiment(node.gold_label, self.num_classes))
+                    target = utils.map_label_to_target_sentiment(node.gold_label, self.num_classes)
+                    if target is None:
+                        discard_subtree += 1
+                        continue
+                    target = Var(target)
                     if self.cudaFlag:
                         target = target.cuda()
                     loss = loss + self.criterion(output, target)
+
             loss = loss
-            return output, loss
+            n_subtree = n_subtree -discard_subtree
+            return output, loss, n_subtree
         else:
             _, hn = self.lstm.forward(vec)
             h = hn[0]

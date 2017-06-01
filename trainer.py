@@ -38,14 +38,16 @@ class SentimentTrainer(object):
                 input = input.cuda()
                 target = target.cuda()
             emb = F.torch.unsqueeze(self.embedding_model(input), 1)
-            output, err = self.model.forward(tree, emb, training = True)
+
             if self.args.model_name == 'lstm' or self.args.model_name == 'bilstm':
+                output, err, n_subtrees = self.model.forward(tree, emb, training=True)
                 if self.args.train_subtrees == -1:
                     n_subtrees = len(tree.depth_first_preorder())
                 else:
                     n_subtrees = self.args.train_subtrees
                 batch_size = self.args.batchsize * n_subtrees
             else:
+                output, err = self.model.forward(tree, emb, training=True)
                 batch_size = self.args.batchsize
 
             if self.args.reg > 0 or self.args.embreg > 0:

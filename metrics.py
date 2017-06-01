@@ -23,8 +23,11 @@ class Metrics():
         y = Var(deepcopy(labels), volatile=True)
         return nn.MSELoss()(x,y).data[0]
 
-    def sentiment_accuracy_score(self, predictions, labels, fine_gained = True):
-        correct = (predictions==labels).sum()
-        total = labels.size(0)
+    def sentiment_accuracy_score(self, predictions, labels, fine_gained = True, num_classes = 3):
+        _labels = deepcopy(labels)
+        if num_classes == 2:
+            _labels[_labels==2] = 1
+        correct = (predictions==_labels).sum()
+        total = _labels.size(0)
         acc = float(correct)/total
         return acc

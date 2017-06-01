@@ -70,6 +70,8 @@ def map_label_to_target_sentiment(label, num_classes = 3 ,fine_grain = False):
     elif num_classes == 2: # so this case have 2 output
         if label == 2:
             target[0] = int(1)
+        elif label == 1: # discard all neutral sample
+            return None
         else:
             target[0] = int(label)
     return target

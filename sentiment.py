@@ -56,7 +56,7 @@ def main():
         else:
             args.num_classes = 3 # 0 1 2 (1 neutral)
     elif args.num_classes == 2:
-        assert False # this will not work
+        # assert False # this will not work
         assert not args.fine_grain
 
     args.cuda = args.cuda and torch.cuda.is_available()
@@ -237,6 +237,8 @@ def main():
         print('break')
         quit()
     elif mode == "EXPERIMENT":
+        # dev_loss, dev_pred = trainer.test(dev_dataset)
+        # dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels, num_classes=args.num_classes)
         max_dev = 0
         max_dev_epoch = 0
         filename = args.name + '.pth'
@@ -244,8 +246,8 @@ def main():
             train_loss_while_training = trainer.train(train_dataset)
             train_loss, train_pred = trainer.test(train_dataset)
             dev_loss, dev_pred = trainer.test(dev_dataset)
-            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
-            train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
+            dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels, num_classes=args.num_classes)
+            train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels, num_classes=args.num_classes)
             print('==> Train loss   : %f \t' % train_loss_while_training, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
             print ('Epoch %d dev percentage %f ' %(epoch, dev_acc))
@@ -264,7 +266,7 @@ def main():
         embedding_model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_embedding_' + filename))
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
         test_loss, test_pred = trainer.test(test_dataset)
-        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels, num_classes=args.num_classes)
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
         print('____________________' + str(args.name) + '___________________')
     else:
