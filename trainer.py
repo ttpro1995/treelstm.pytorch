@@ -52,12 +52,16 @@ class SentimentTrainer(object):
 
             if self.args.reg > 0 or self.args.embreg > 0:
                 params = self.model.getParameters()
-                params_norm = params.data.norm()
+                params_norm = params.norm()
                 l2_model = 0.5*self.args.reg*params_norm*params_norm
                 emb_params = list(self.embedding_model.parameters())[0]
-                emb_params_norm = (emb_params.data - self.emb_params_init).norm()
+                emb_init = Var(self.emb_params_init, requires_grad = False)
+                emb_params_norm = (emb_params - emb_init).norm()
                 l2_emb_params = 0.5 * self.args.embreg* emb_params_norm * emb_params_norm
-                err = (err + l2_model + l2_emb_params) / batch_size
+                if l2_emb_params.data[0] > 0:
+                    err = (err + l2_model + l2_emb_params) / batch_size
+                else:
+                    err = (err + l2_model ) / batch_size
             else:
                 err = err / batch_size
 
