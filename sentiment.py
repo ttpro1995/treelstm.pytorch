@@ -267,6 +267,7 @@ def main():
 
     # create trainer object for training and testing
     trainer  = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
+    trainer.set_initial_emb(emb)
 
     mode = args.mode
     print ('Run mode '+args.mode)

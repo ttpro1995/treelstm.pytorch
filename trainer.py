@@ -22,7 +22,10 @@ class SentimentTrainer(object):
         self.plot_tree_grad_param = []
         if self.args.model_name == 'com_gru':
             self.rel_self = model.rel_self  # rel self index
+            self.emb_params_init = None
 
+    def set_initial_emb(self, emb):
+        self.emb_params_init = emb
 
 
     # helper function for training
@@ -92,7 +95,7 @@ class SentimentTrainer(object):
 
                 if self.args.emblr > 0:
                     for f in self.embedding_model.word_embedding.parameters():
-                        f.data.sub_(f.grad.data * self.args.emblr + self.args.emblr*self.args.embwd*f.data)
+                        f.data.sub_(f.grad.data * self.args.emblr + self.args.emblr*self.args.embwd*(f.data-self.emb_params_init))
 
                 self.optimizer.step()
                 self.embedding_model.zero_grad()
