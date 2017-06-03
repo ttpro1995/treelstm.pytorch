@@ -65,6 +65,33 @@ class SentimentTrainer(object):
             output, err = self.model.forward(tree, sent_emb, tag_emb, rel_emb, training = True, rel_self = rel_self)
             #params = self.model.get_tree_parameters()
             #params_norm = params.norm()
+
+            # apply L2 to loss 
+            emb_params = list(self.embedding_model.parameters())
+            word_params = emb_params[0]
+            word_params_init = Var(self.emb_params_init)
+            word_norm = (word_params - word_params_init).norm()
+            l2_word = 0.5 * self.args.embwd*word_norm*word_norm
+            if l2_word.data[0] > 0:
+                err = err + l2_word
+
+            emb_idx = 1
+            if self.args.tag_dim > 0:
+                emb_idx += 1
+                if self.args.tag_embwd:
+                    tag_params = emb_params[emb_idx]
+                    tag_norm = tag_params.norm()
+                    l2_tag = 0.5*self.args.tag_embwd*tag_norm*tag_norm
+                    err = err + l2_tag
+
+            if self.args.rel_dim > 0:
+                if self.args.rel_embwd:
+                    rel_params = emb_params[emb_idx]
+                    rel_norm = rel_params.norm()
+                    l2_rel = 0.5*self.args.rel_embwd*rel_norm*rel_norm
+                    err = err + l2_rel
+
+
             err = err/self.args.batchsize #+ 0.5*self.args.reg*params_norm*params_norm # custom bias
             loss += err.data[0] #
             err.backward()
@@ -87,15 +114,15 @@ class SentimentTrainer(object):
 
                 if self.args.tag_emblr > 0 and self.args.tag_dim > 0:
                     for f in self.embedding_model.tag_emb.parameters(): # train tag embedding
-                        f.data.sub_(f.grad.data * self.args.tag_emblr + self.args.tag_emblr*self.args.tag_embwd*f.data)
+                        f.data.sub_(f.grad.data * self.args.tag_emblr)
 
                 if self.args.rel_emblr > 0 and self.args.rel_dim > 0:
                     for f in self.embedding_model.rel_emb.parameters():
-                        f.data.sub_(f.grad.data * self.args.rel_emblr + self.args.rel_emblr*self.args.rel_embwd*f.data)
+                        f.data.sub_(f.grad.data * self.args.rel_emblr)
 
                 if self.args.emblr > 0:
                     for f in self.embedding_model.word_embedding.parameters():
-                        f.data.sub_(f.grad.data * self.args.emblr + self.args.emblr*self.args.embwd*(f.data-self.emb_params_init))
+                        f.data.sub_(f.grad.data * self.args.emblr)
 
                 self.optimizer.step()
                 self.embedding_model.zero_grad()
