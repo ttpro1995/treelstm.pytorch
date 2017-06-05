@@ -291,22 +291,24 @@ def main():
             utils.plot_subtree_metrics(test_sub_metric, epoch, args, 'test')
             print('Epoch ', epoch + 1, 'dev percentage ', dev_acc, 'test percentage ', test_acc)
     elif mode == "PRINT_TREE":
-        for i in range(0, 10):
-            ttree, tsent, ttag, trel, tlabel = dev_dataset[i]
-            se = vocab.convertToLabels(tsent, Constants.UNK)
-            sentences = ' '.join(se)
-            print(sentences)
-            utils.print_tree(vocab, tagvocab, tsent, ttree, 0)
-
-            print('_______________')
-        print('break')
+        print_list = torch.load(os.path.join(args.saved, args.name + 'printlist.pth'))
+        utils.print_trees_file(args, vocab, tagvocab, dev_dataset, print_list, name=args.name)
+        #
+        # for i in range(0, 10):
+        #     ttree, tsent, ttag, trel, tlabel = dev_dataset[i]
+        #     se = vocab.convertToLabels(tsent, Constants.UNK)
+        #     sentences = str(i) +' '+ '.join(se)'
+        #     print(sentences)
+        #     utils.print_tree(vocab, tagvocab, tsent, ttree, 0)
+        #
+        #     print('_______________')
         quit()
     elif mode == "EXPERIMENT":
         max_dev = 0
         max_dev_epoch = 0
         filename = args.name + '.pth'
         for epoch in range(args.epochs):
-            train_loss = trainer.train(train_dataset)
+            # train_loss = trainer.train(train_dataset)
             train_loss, train_pred, train_sub_metric = trainer.test(train_dataset)
             dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)
             stat_train_loss.append(train_loss)
@@ -330,21 +332,36 @@ def main():
                 max_dev_epoch = epoch
                 torch.save(model, args.saved + str(epoch) + '_model_' + filename)
                 torch.save(embedding_model, args.saved + str(epoch) + '_embedding_' + filename)
+                best_dev_embedding = args.name + str(epoch) + "embedding.pth"
+                best_dev_model = args.name + str(epoch) + "model.pth"
+                best_dev_optim_state = args.name + str(epoch) + "optim_state.pth"
+                torch.save(embedding_model, os.path.join(args.saved, best_dev_embedding))
+                torch.save(model, os.path.join(args.saved, best_dev_model))
+                torch.save(trainer.optimizer.state_dict(), os.path.join(args.saved, best_dev_optim_state))
             gc.collect()
         print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
         print('eva on test set ')
-        model = torch.load(args.saved + str(max_dev_epoch) + '_model_' + filename)
-        embedding_model = torch.load(args.saved + str(max_dev_epoch) + '_embedding_' + filename)
+        best_dev_embedding = args.name + str(max_dev_epoch) + "embedding.pth"
+        best_dev_model = args.name + str(max_dev_epoch) + "model.pth"
+        model = torch.load(os.path.join(args.saved, best_dev_model))
+        embedding_model = torch.load(os.path.join(args.saved, best_dev_embedding))
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
         test_loss, test_pred, test_sub_metric = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
         utils.plot_subtree_metrics(test_sub_metric, epoch, args, 'test')
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
         print('____________________' + str(args.name) + '___________________')
+        # print incorrect tree
+        # print incorrect tree
+        print_list = dev_sub_metric.print_list
+        torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
+        utils.print_trees_file(args, vocab, tagvocab, dev_dataset, print_list, name=args.name)
     elif mode == "BABY":
         # part_index = dev_subtree_dataset.part_index
         # part_index.append(dev_subtree_dataset.size)
         depth_group = [5, 10, 15, 25]
+        depth_group_2 = [1, 2, 4, 6, 10, 15, 25]
+        depth_group = depth_group_2
         start_depth = 0
         best_dev_model = None
         best_dev_embedding = None
@@ -382,7 +399,7 @@ def main():
                 full_dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
                 print('dev percentage %f from depth %d to %d'% (dev_acc, start_depth, depth))
                 print('Dev acc on full dev dataset %f' % (full_dev_acc))
-                if dev_acc > max_dev_score:
+                if (dev_acc - max_dev_score) > 0.005:
                     max_dev_score = dev_acc
                     n_iter = 0
                     print ('Update max dev score %f'%(max_dev_score))
@@ -444,3 +461,5 @@ if __name__ == "__main__":
     sys.stdout = s1
     print('_________________________________start___________________________________')
     main()
+    log_link = log_util.up_gist(log_dir+'.log', args.name, __file__)
+    print(log_link)

@@ -38,7 +38,7 @@ class SentimentTrainer(object):
 
 
     # helper function for training
-    def train(self, dataset, plot = True, max_depth = None):
+    def train(self, dataset, plot = False, max_depth = None):
         """
         
         :param dataset: dataset
@@ -159,13 +159,16 @@ class SentimentTrainer(object):
             sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
             # output, _ = self.model(tree, sent_emb, tag_emb, rel_emb)  # bug rel_emb ?
             subtree_metric.current_idx = idx
-            output, _ = self.model(tree, sent_emb, tag_emb, subtree_metric = subtree_metric)
+            output, _ = self.model(tree, sent_emb, tag_emb, subtree_metric = None)
             err = self.criterion(output, target)
             loss += err.data[0]
             if not allow_neutral:
                 output[:, 1] = -9999  # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             predictions[idx] = pred.data.cpu()[0][0]
+            correct = predictions[idx]==tree.gold_label
+            subtree_metric.count_depth(correct, 0, tree.idx, predictions[idx])
+
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
         return loss / len(dataset), predictions, subtree_metric
 

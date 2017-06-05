@@ -148,6 +148,8 @@ def print_trees_file(args, vocab, tag_vocab, dataset, print_list, name = ''):
     treedir = os.path.join(treedir, args.name + name)
     tree_file = open(treedir, 'w')
     for idx in print_list.keys():
+        tree_file.write(str(idx) + ' ')
+    for idx in print_list.keys():
         tree, sent, tag, rel, label = dataset[idx]
         print_tree_file(tree_file, vocab, tag_vocab, sent, tree, print_list[idx])
         tree_file.write('------------------------\n')

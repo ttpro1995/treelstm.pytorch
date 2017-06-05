@@ -36,6 +36,16 @@ class FasterGRUTree(nn.Module):
         self.dropout_vertical_mem = nn.Dropout(p=args.vertical_dropout)
         self.dropout_horizontal_mem = nn.Dropout(p=args.horizontal_dropout)
         self.dropout_leaf = nn.Dropout(p=args.leaf_dropout)
+        if self.cudaFlag:
+            self.leaf_module = self.leaf_module.cuda()
+            self.node_module = self.node_module.cuda()
+            self.children_module = self.children_module.cuda()
+            self.dropout_word = self.dropout_word.cuda()
+            self.dropout_pos_tag = self.dropout_pos_tag.cuda()
+            self.dropout_horizontal_mem = self.dropout_horizontal_mem.cuda()
+            self.dropout_vertical_mem = self.dropout_vertical_mem.cuda()
+            self.dropout_leaf = self.dropout_leaf.cuda()
+
         self.output_module = None
 
     def set_output_module(self, output_module):
@@ -115,13 +125,14 @@ class FasterGRUTree(nn.Module):
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
             val, pred = torch.max(output, 1)
-            correct = pred.data[0][0] == tree.gold_label
-            if subtree_metric and not training and tree.parent and tree.gold_label!= None:
-                # measue subtree metrics
-                subtree_metric.count(correct, tree.count_leaf())
-            if subtree_metric and not training and tree.gold_label != None:
-                subtree_metric.count_depth(correct, tree.depth(), tree.idx, pred.data[0][0])
-                subtree_metric.checkDepth(tree.depth())
+            if subtree_metric:
+                correct = pred.data[0][0] == tree.gold_label
+                if not training and tree.parent and tree.gold_label!= None:
+                    # measue subtree metrics
+                    subtree_metric.count(correct, tree.count_leaf())
+                if not training and tree.gold_label != None:
+                    subtree_metric.count_depth(correct, tree.depth(), tree.idx, pred.data[0][0])
+                    subtree_metric.checkDepth(tree.depth())
 
 
         return tree.state, loss
