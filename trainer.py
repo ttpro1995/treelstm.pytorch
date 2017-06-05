@@ -5,6 +5,7 @@ from utils import map_label_to_target, map_label_to_target_sentiment
 import torch.nn.functional as F
 import gc
 import utils
+from metrics import SubtreeMetric
 
 class SentimentTrainer(object):
     """
@@ -142,6 +143,7 @@ class SentimentTrainer(object):
 
     # helper function for testing
     def test(self, dataset):
+        subtree_metric = SubtreeMetric()
         self.model.eval()
         self.embedding_model.eval()
         loss = 0
@@ -174,9 +176,13 @@ class SentimentTrainer(object):
             loss += err.data[0]
             output[:,1] = -9999 # no need middle (neutral) value
             val, pred = torch.max(output, 1)
-            predictions[idx] = pred.data.cpu()[0][0]
+            pred_cpu = pred.data.cpu()[0][0]
+            predictions[idx] = pred_cpu
+            correct = pred_cpu == tree.gold_label
+            subtree_metric.current_idx = idx
+            subtree_metric.count_depth(correct, 0, tree.idx, pred_cpu)
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
-        return loss/len(dataset), predictions
+        return loss/len(dataset), predictions, subtree_metric
 
 class SimilarityTrainer(object):
     def __init__(self, args, model, embedding_model, criterion, optimizer):
