@@ -308,7 +308,7 @@ def main():
         max_dev_epoch = 0
         filename = args.name + '.pth'
         for epoch in range(args.epochs):
-            # train_loss = trainer.train(train_dataset)
+            train_loss = trainer.train(train_dataset)
             train_loss, train_pred, train_sub_metric = trainer.test(train_dataset)
             dev_loss, dev_pred, dev_sub_metric = trainer.test(dev_dataset)
             stat_train_loss.append(train_loss)
@@ -355,7 +355,6 @@ def main():
         # print incorrect tree
         print_list = dev_sub_metric.print_list
         torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
-        utils.print_trees_file(args, vocab, tagvocab, dev_dataset, print_list, name=args.name)
     elif mode == "BABY":
         # part_index = dev_subtree_dataset.part_index
         # part_index.append(dev_subtree_dataset.size)

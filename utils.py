@@ -149,6 +149,7 @@ def print_trees_file(args, vocab, tag_vocab, dataset, print_list, name = ''):
     tree_file = open(treedir, 'w')
     for idx in print_list.keys():
         tree_file.write(str(idx) + ' ')
+    tree_file.write('\n-----------------------------------\n')
     for idx in print_list.keys():
         tree, sent, tag, rel, label = dataset[idx]
         print_tree_file(tree_file, vocab, tag_vocab, sent, tree, print_list[idx])

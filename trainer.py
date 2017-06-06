@@ -165,9 +165,10 @@ class SentimentTrainer(object):
             if not allow_neutral:
                 output[:, 1] = -9999  # no need middle (neutral) value
             val, pred = torch.max(output, 1)
-            predictions[idx] = pred.data.cpu()[0][0]
-            correct = predictions[idx]==tree.gold_label
-            subtree_metric.count_depth(correct, 0, tree.idx, predictions[idx])
+            pred_cpu = pred.data.cpu()[0][0]
+            predictions[idx] = pred_cpu
+            correct = pred_cpu==tree.gold_label
+            subtree_metric.count_depth(correct, 0, tree.idx, pred_cpu)
 
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
         return loss / len(dataset), predictions, subtree_metric
