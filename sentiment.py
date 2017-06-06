@@ -363,8 +363,7 @@ def main():
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage '+ str(test_acc))
         print ('____________________'+str(args.name)+'___________________')
-        print_list = subtree_metrics.print_list
-        torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
+
 
     else:
         for epoch in range(args.epochs):
