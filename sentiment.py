@@ -218,12 +218,12 @@ def main():
 
     # trainer = SentimentTrainer(args, model, embedding_model ,criterion, optimizer)
 
-    mode = 'EXPERIMENT'
+    mode = args.mode
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             dev_loss = trainer.train(dev_dataset)
-            dev_loss, dev_pred = trainer.test(dev_dataset)
-            test_loss, test_pred = trainer.test(test_dataset)
+            dev_loss, dev_pred, _ = trainer.test(dev_dataset)
+            test_loss, test_pred, _ = trainer.test(test_dataset)
 
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
             test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
@@ -236,6 +236,22 @@ def main():
             print('_______________')
         print('break')
         quit()
+    elif mode == 'EVALUATE':
+        filename = args.name + '.pth'
+        epoch = args.epochs
+        model_name = str(epoch)+'_model_'+filename
+        embedding_name = str(epoch)+'_embedding_'+filename
+        model = torch.load(os.path.join(args.saved, model_name))
+        embedding_model = torch.load(os.path.join(args.saved, embedding_name))
+
+        trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
+        test_loss, test_pred, subtree_metrics = trainer.test(dev_dataset)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, dev_dataset.labels)
+        print('Epoch with max dev:' + str(epoch) + ' |test percentage '+ str(test_acc))
+        print ('____________________'+str(args.name)+'___________________')
+        print_list = subtree_metrics.print_list
+        torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
+        utils.print_trees_file(args, vocab, dev_dataset, print_list, name=args.name)
     elif mode == "EXPERIMENT":
         # dev_loss, dev_pred = trainer.test(dev_dataset)
         # dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels, num_classes=args.num_classes)
@@ -244,8 +260,8 @@ def main():
         filename = args.name + '.pth'
         for epoch in range(args.epochs):
             train_loss_while_training = trainer.train(train_dataset)
-            train_loss, train_pred = trainer.test(train_dataset)
-            dev_loss, dev_pred = trainer.test(dev_dataset)
+            train_loss, train_pred, _ = trainer.test(train_dataset)
+            dev_loss, dev_pred, _ = trainer.test(dev_dataset)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels, num_classes=args.num_classes)
             train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels, num_classes=args.num_classes)
             print('==> Train loss   : %f \t' % train_loss_while_training, end="")
@@ -265,16 +281,16 @@ def main():
         model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_model_' + filename))
         embedding_model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_embedding_' + filename))
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
-        test_loss, test_pred = trainer.test(test_dataset)
+        test_loss, test_pred, _ = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels, num_classes=args.num_classes)
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
         print('____________________' + str(args.name) + '___________________')
     else:
         for epoch in range(args.epochs):
             train_loss = trainer.train(train_dataset)
-            train_loss, train_pred = trainer.test(train_dataset)
-            dev_loss, dev_pred = trainer.test(dev_dataset)
-            test_loss, test_pred = trainer.test(test_dataset)
+            train_loss, train_pred, _ = trainer.test(train_dataset)
+            dev_loss, dev_pred, _ = trainer.test(dev_dataset)
+            test_loss, test_pred, _ = trainer.test(test_dataset)
 
             train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)

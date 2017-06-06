@@ -74,6 +74,8 @@ def parse_args(type=0):
                             help='name for log and saved models')
         parser.add_argument('--saved', default='saved_model',
                             help='name for log and saved models')
+        parser.add_argument('--mode', default='EXPERIMENT',
+                            help='MODE')
 
         parser.add_argument('--model_name', default='constituency',
                             help='model name constituency or dependency or lstm or bilstm')

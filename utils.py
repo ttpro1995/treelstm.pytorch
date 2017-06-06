@@ -5,6 +5,7 @@ import torch
 from tree import Tree
 from vocab import Vocab
 import torch
+from meowlogtool import log_util
 
 # loading GLOVE word vectors
 # if .pth file is found, will load that
@@ -75,6 +76,66 @@ def map_label_to_target_sentiment(label, num_classes = 3 ,fine_grain = False):
         else:
             target[0] = int(label)
     return target
+
+def print_tree_file(file_obj, vocab, word, tree, pred_info, level = 0):
+    """
+    Print tree for debug
+    :param vocab:
+    :param input:
+    :param tree:
+    :param level:
+    :return:
+    """
+    indent = ''
+    leaf_range = len(word)
+    for i in range(level):
+        indent += '| '
+    line = indent + str(tree.idx) + ' '
+    idx = tree.idx
+
+    # label
+    if tree.gold_label != None:
+        line += str(tree.gold_label) + ' '
+
+    # predict info
+    if tree.idx in pred_info.keys():
+        pred = pred_info[tree.idx]
+        line += str(pred) + ' '
+
+
+    # word
+    if tree.idx -1 < leaf_range:
+        line += str(vocab.idxToLabel[word[tree.idx-1]])+' '
+
+    line += '  ' + '\n'
+    file_obj.write(line)
+    for i in xrange(tree.num_children):
+        print_tree_file(file_obj, vocab, word, tree.children[i], pred_info, level+1)
+
+
+def print_trees_file(args, vocab, dataset, print_list, name = ''):
+    name = name + '.txt'
+    treedir = os.path.join('logs', args.name)
+    folder_dir = treedir
+    mkdir_p(treedir)
+    treedir = os.path.join(treedir, args.name + name)
+    tree_file = open(treedir, 'w')
+    incorrect = set()
+    for idx in print_list.keys():
+        tree_file.write(str(idx) + ' ')
+        incorrect.add(idx)
+    torch.save(incorrect, os.path.join(folder_dir, args.name + 'incorrect.pth')) # for easy compare
+    tree_file.write('\n-----------------------------------\n')
+    for idx in print_list.keys():
+        tree, sent, label = dataset[idx]
+        sent_toks = vocab.convertToLabels(sent, -1)
+        sentences = ' '.join(sent_toks)
+        tree_file.write('idx_'+str(idx)+' '+sentences+'\n')
+        print_tree_file(tree_file, vocab, sent, tree, print_list[idx])
+        tree_file.write('------------------------\n')
+    tree_file.close()
+    tree_dir_link = log_util.up_gist(treedir, args.name, 'tree')
+    print('Print tree link '+tree_dir_link)
 
 def count_param(model):
     print('_param count_')
