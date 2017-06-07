@@ -221,6 +221,11 @@ def main():
     mode = args.mode
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
+            # print a tree
+            tree, sent, label = dev_dataset[3]
+            utils.print_span(tree, sent, vocab)
+            quit()
+
             dev_loss = trainer.train(dev_dataset)
             dev_loss, dev_pred, _ = trainer.test(dev_dataset)
             test_loss, test_pred, _ = trainer.test(test_dataset)
@@ -251,7 +256,7 @@ def main():
         print ('____________________'+str(args.name)+'___________________')
         print_list = subtree_metrics.print_list
         torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
-        utils.print_trees_file(args, vocab, dev_dataset, print_list, name=args.name)
+        utils.print_trees_file(args, vocab, dev_dataset, print_list, name='tree')
     elif mode == "EXPERIMENT":
         # dev_loss, dev_pred = trainer.test(dev_dataset)
         # dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels, num_classes=args.num_classes)

@@ -180,3 +180,13 @@ def flatParameters(model):
     one_dim = [p.view(p.numel()) for p in params]
     params = torch.cat(one_dim)
     return params
+
+def print_span(tree, sent, vocab):
+    """print all span of tree (for debug)"""
+    nodes = tree.depth_first_preorder()
+    for node in nodes:
+        lo, hi = node.lo, node.hi
+        span_vec = sent[lo - 1:hi]
+        sent_toks = vocab.convertToLabels(span_vec, -2)
+        sentences = ' '.join(sent_toks)
+        print (sentences)

@@ -91,7 +91,6 @@ class SSTDataset(data.Dataset):
     def __init__(self, path, vocab, num_classes, fine_grain, model_name):
         super(SSTDataset, self).__init__()
         self.vocab = vocab
-        self.num_classes = num_classes
         self.fine_grain = fine_grain
         self.model_name = model_name
 

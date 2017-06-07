@@ -34,7 +34,7 @@ class SentimentTrainer(object):
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             tree, sent, label = dataset[indices[idx]]
             input = Var(sent)
-            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain))
+            target = Var(map_label_to_target_sentiment(label, self.args.num_classes, fine_grain=self.args.fine_grain))
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
@@ -99,11 +99,11 @@ class SentimentTrainer(object):
         loss = 0
         predictions = torch.zeros(len(dataset))
         predictions = predictions
-        indices = torch.range(1,dataset.num_classes)
+        indices = torch.range(1,self.args.num_classes)
         for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
             tree, sent, label = dataset[idx]
             input = Var(sent, volatile=True)
-            target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain), volatile=True)
+            target = Var(map_label_to_target_sentiment(label,self.args.num_classes, fine_grain=self.args.fine_grain), volatile=True)
             if self.args.cuda:
                 input = input.cuda()
                 target = target.cuda()
@@ -111,7 +111,7 @@ class SentimentTrainer(object):
             output, _ = self.model(tree, emb) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
-            if dataset.num_classes == 3:
+            if self.args.num_classes == 3:
                 output[:,1] = -9999 # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             pred_cpu = pred.data.cpu()[0][0]
@@ -144,7 +144,7 @@ class SimilarityTrainer(object):
         for idx in tqdm(xrange(len(dataset)),desc='Training epoch '+str(self.epoch+1)+''):
             ltree,lsent,rtree,rsent,label = dataset[indices[idx]]
             linput, rinput = Var(lsent), Var(rsent)
-            target = Var(map_label_to_target(label,dataset.num_classes))
+            target = Var(map_label_to_target(label,self.args.num_classes))
             if self.args.cuda:
                 linput, rinput = linput.cuda(), rinput.cuda()
                 target = target.cuda()
@@ -170,11 +170,11 @@ class SimilarityTrainer(object):
         self.model.eval()
         loss = 0
         predictions = torch.zeros(len(dataset))
-        indices = torch.range(1,dataset.num_classes)
+        indices = torch.range(1,self.args.num_classes)
         for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
             ltree,lsent,rtree,rsent,label = dataset[idx]
             linput, rinput = Var(lsent, volatile=True), Var(rsent, volatile=True)
-            target = Var(map_label_to_target(label,dataset.num_classes), volatile=True)
+            target = Var(map_label_to_target(label,self.args.num_classes), volatile=True)
             if self.args.cuda:
                 linput, rinput = linput.cuda(), rinput.cuda()
                 target = target.cuda()
