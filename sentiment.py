@@ -308,8 +308,8 @@ def main():
         embedding_model = torch.load(os.path.join(args.saved, embedding_name))
 
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
-        test_loss, test_pred, subtree_metrics = trainer.test(dev_dataset)
-        test_acc = metrics.sentiment_accuracy_score(test_pred, dev_dataset.labels)
+        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
         print('Epoch with max dev:' + str(epoch) + ' |test percentage '+ str(test_acc))
         print ('____________________'+str(args.name)+'___________________')
         print_list = subtree_metrics.print_list

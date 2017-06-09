@@ -281,6 +281,7 @@ def print_trees_file(args, vocab, tag_vocab, rel_vocab, dataset, print_list, nam
         tree_file.write(str(idx) + ' ')
         incorrect.add(idx)
     torch.save(incorrect, os.path.join(folder_dir, args.name + 'incorrect.pth')) # for easy compare
+    print('save incorrect at %s'%(os.path.join(folder_dir, args.name + 'incorrect.pth')))
     tree_file.write('\n-----------------------------------\n')
     for idx in print_list.keys():
         tree, sent, tag, rel, label = dataset[idx]
