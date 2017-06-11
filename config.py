@@ -77,6 +77,9 @@ def parse_args(type=0):
         parser.add_argument('--mode', default='EXPERIMENT',
                             help='MODE')
 
+        parser.add_argument('--test_idx', default='test_idx.npy',
+                            help='dir to test idx np')
+
         parser.add_argument('--model_name', default='constituency',
                             help='model name constituency or dependency or lstm or bilstm')
         parser.add_argument('--data', default='data/sst/',

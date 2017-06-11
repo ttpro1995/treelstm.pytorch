@@ -218,6 +218,12 @@ def main():
 
     # trainer = SentimentTrainer(args, model, embedding_model ,criterion, optimizer)
 
+    test_idx_dir = os.path.join(args.data, args.test_idx)
+    test_idx = None
+    if os.path.isfile(test_idx_dir):
+        print('load test idx %s' % (args.test_idx))
+        test_idx = np.load(test_idx_dir)
+
     mode = args.mode
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
@@ -250,13 +256,13 @@ def main():
         embedding_model = torch.load(os.path.join(args.saved, embedding_name))
 
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
-        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset)
-        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset, test_idx)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels, test_idx)
         print('Epoch with max dev:' + str(epoch) + ' |test percentage '+ str(test_acc))
         print ('____________________'+str(args.name)+'___________________')
         print_list = subtree_metrics.print_list
         torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
-        utils.print_trees_file(args, vocab, dev_dataset, print_list, name='tree')
+        utils.print_trees_file(args, vocab, test_dataset, print_list, name='tree')
     elif mode == "EXPERIMENT":
         # dev_loss, dev_pred = trainer.test(dev_dataset)
         # dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels, num_classes=args.num_classes)

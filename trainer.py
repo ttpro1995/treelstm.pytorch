@@ -92,15 +92,20 @@ class SentimentTrainer(object):
         return loss/len(dataset)
 
     # helper function for testing
-    def test(self, dataset):
+    def test(self, dataset, test_idx = None):
         subtree_metric = SubtreeMetric()
         self.model.eval()
         self.embedding_model.eval()
         loss = 0
         predictions = torch.zeros(len(dataset))
         predictions = predictions
-        indices = torch.range(1,self.args.num_classes)
-        for idx in tqdm(xrange(len(dataset)),desc='Testing epoch  '+str(self.epoch)+''):
+        indices = xrange(len(dataset))
+        if test_idx is not None:
+            indices = test_idx
+        predictions = torch.zeros(len(indices))
+        predictions = predictions
+        for i in tqdm(xrange(len(indices)),desc='Testing epoch  '+str(self.epoch)+''):
+            idx = indices[i]
             tree, sent, label = dataset[idx]
             input = Var(sent, volatile=True)
             target = Var(map_label_to_target_sentiment(label,self.args.num_classes, fine_grain=self.args.fine_grain), volatile=True)
@@ -115,7 +120,7 @@ class SentimentTrainer(object):
                 output[:,1] = -9999 # no need middle (neutral) value
             val, pred = torch.max(output, 1)
             pred_cpu = pred.data.cpu()[0][0]
-            predictions[idx] = pred_cpu
+            predictions[i] = pred_cpu
             correct = pred_cpu == tree.gold_label
             subtree_metric.current_idx = idx
             subtree_metric.count_depth(correct, 0, tree.idx, pred_cpu)
