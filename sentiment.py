@@ -35,6 +35,8 @@ from trainer import SentimentTrainer
 
 from embedding_model import EmbeddingModel
 
+import numpy as np
+
 import gc
 import const
 # MAIN BLOCK
@@ -255,6 +257,12 @@ def main():
     # embedding_model.state_dict()['weight'].copy_(emb)
     # initialize word embeding
 
+    test_idx_dir = os.path.join(args.data, args.test_idx)
+    test_idx = None
+    if os.path.isfile(test_idx_dir):
+        print ('load test idx %s'%(args.test_idx))
+        test_idx = np.load(test_idx_dir)
+
     # model.embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
     embedding_model.word_embedding.state_dict()['weight'].copy_(emb)
     if args.tag_glove:
@@ -296,8 +304,11 @@ def main():
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
     if mode =='PRINT_TREE':
-        print_list = torch.load(os.path.join(args.saved, args.name + 'printlist.pth'))
-        utils.print_trees_file(args, vocab, tagvocab, dev_dataset, print_list, name=args.name)
+        # print_list = torch.load(os.path.join(args.saved, args.name + 'printlist.pth'))
+        # utils.print_trees_file(args, vocab, tagvocab, dev_dataset, print_list, name=args.name)
+        # print_list = torch.Tensor([ 265,  200, 1580,  425, 1569,   23, 1014, 1563, 1160, 1540, 1680, 1086]).long()
+        print_list = torch.from_numpy(test_idx).long()
+        utils.print_trees_file_list(args, vocab, tagvocab, relvocab, test_dataset, print_list, name=args.name)
         quit()
     if mode =='EVALUATE':
         filename = args.name + '.pth'
@@ -308,13 +319,13 @@ def main():
         embedding_model = torch.load(os.path.join(args.saved, embedding_name))
 
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
-        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset)
-        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset, test_idx)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels, test_idx)
         print('Epoch with max dev:' + str(epoch) + ' |test percentage '+ str(test_acc))
         print ('____________________'+str(args.name)+'___________________')
         print_list = subtree_metrics.print_list
         torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
-        utils.print_trees_file(args, vocab, tagvocab, relvocab, dev_dataset, print_list, name=args.name)
+        utils.print_trees_file(args, vocab, tagvocab, relvocab, test_dataset, print_list, name=args.name)
     elif mode == "EXPERIMENT":
         max_dev = 0
         max_dev_epoch = 0
@@ -359,8 +370,8 @@ def main():
         embedding_model = torch.load(os.path.join(args.saved, embedding_name))
 
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
-        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset)
-        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels)
+        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset, test_idx)
+        test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels, test_idx)
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage '+ str(test_acc))
         print ('____________________'+str(args.name)+'___________________')
 

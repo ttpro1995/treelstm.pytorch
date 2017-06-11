@@ -246,16 +246,17 @@ def print_tree_file(file_obj, vocab, tag_vocab, rel_vocab, word, tag, rel, tree,
     line += str(tag_vocab.idxToLabel[tag[idx - 1]]).upper()+' '
 
     # rel
-    line += str(tag_vocab.idxToLabel[rel[idx - 1]]).upper() + ' '
+    line += str(tag_vocab.idxToLabel[rel[idx - 1]]).lower() + ' '
 
     # label
     if tree.gold_label != None:
         line += str(tree.gold_label) + ' '
 
     # predict info
-    if tree.idx in pred_info.keys():
-        pred = pred_info[tree.idx]
-        line += str(pred) + ' '
+    if pred_info is not None:
+        if tree.idx in pred_info.keys():
+            pred = pred_info[tree.idx]
+            line += str(pred) + ' '
 
 
     # word
@@ -289,6 +290,30 @@ def print_trees_file(args, vocab, tag_vocab, rel_vocab, dataset, print_list, nam
         sentences = ' '.join(sent_toks)
         tree_file.write('idx_'+str(idx)+' '+sentences+'\n')
         print_tree_file(tree_file, vocab, tag_vocab, rel_vocab, sent, tag, rel, tree, print_list[idx])
+        tree_file.write('------------------------\n')
+    tree_file.close()
+    tree_dir_link = log_util.up_gist(treedir, args.name, 'tree')
+    print('Print tree link '+tree_dir_link)
+
+def print_trees_file_list(args, vocab, tag_vocab, rel_vocab, dataset, print_list, name = ''):
+    name = name + '.txt'
+    treedir = os.path.join('plot', args.name)
+    treedir = os.path.join(treedir, 'incorrect_tree')
+    folder_dir = treedir
+    mkdir_p(treedir)
+    treedir = os.path.join(treedir, args.name + name)
+    tree_file = open(treedir, 'w')
+    incorrect = set()
+    for idx in print_list:
+        tree_file.write(str(idx) + ' ')
+        incorrect.add(idx)
+    tree_file.write('\n-----------------------------------\n')
+    for idx in print_list:
+        tree, sent, tag, rel, label = dataset[idx]
+        sent_toks = vocab.convertToLabels(sent, -1)
+        sentences = ' '.join(sent_toks)
+        tree_file.write('idx_'+str(idx)+' '+sentences+'\n')
+        print_tree_file(tree_file, vocab, tag_vocab, rel_vocab, sent, tag, rel, tree, None)
         tree_file.write('------------------------\n')
     tree_file.close()
     tree_dir_link = log_util.up_gist(treedir, args.name, 'tree')

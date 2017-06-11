@@ -107,6 +107,9 @@ def parse_args(type=0):
         parser.add_argument('--model_name', default='com_gru',
                             help='model name com_gru or childsumtree')
 
+        parser.add_argument('--test_idx', default='test_idx.npy',
+                            help='dir to test idx np')
+
         parser.add_argument('--embedding', default='glove',
                             help='embedding type paragram or glove (default: glove)')
         parser.add_argument('--paragram', default='/media/vdvinh/25A1FEDE380BDADA/data/john',
