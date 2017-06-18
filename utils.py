@@ -115,7 +115,7 @@ def print_tree_file(file_obj, vocab, word, tree, pred_info, level = 0):
 
 def print_trees_file(args, vocab, dataset, print_list, name = ''):
     name = name + '.txt'
-    treedir = os.path.join('logs', args.name)
+    treedir = os.path.join(args.logs, args.name)
     folder_dir = treedir
     mkdir_p(treedir)
     treedir = os.path.join(treedir, args.name + name)

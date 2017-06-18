@@ -1,0 +1,3 @@
+mv /sst .
+mv /glove .
+

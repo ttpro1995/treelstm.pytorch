@@ -141,7 +141,7 @@ def main():
         emb_torch = 'sst_embed.pth'
         emb_vector = 'glove.840B.300d'
         emb_vector_path = os.path.join(args.glove, emb_vector)
-        assert os.path.isfile(emb_vector_path+'.txt')
+        # assert os.path.isfile(emb_vector_path+'.txt')
     elif args.embedding == 'paragram':
         emb_torch = 'sst_embed_paragram.pth'
         emb_vector = 'paragram_300_sl999'
@@ -151,6 +151,11 @@ def main():
         emb_torch = 'sst_embed_paragram_xxl.pth'
         emb_vector = 'paragram-phrase-XXL'
         emb_vector_path = os.path.join(args.paragram, emb_vector)
+        assert os.path.isfile(emb_vector_path + '.txt')
+    elif args.embedding == 'other':
+        emb_torch = 'other.pth'
+        emb_vector = args.embedding_other
+        emb_vector_path = emb_vector
         assert os.path.isfile(emb_vector_path + '.txt')
     else:
         assert False
@@ -301,7 +306,7 @@ def main():
             train_loss = trainer.train(train_dataset)
             train_loss, train_pred, _ = trainer.test(train_dataset)
             dev_loss, dev_pred, _ = trainer.test(dev_dataset)
-            test_loss, test_pred, _ = trainer.test(test_dataset)
+            test_loss, test_pred, subtree_metrics = trainer.test(test_dataset)
 
             train_acc = metrics.sentiment_accuracy_score(train_pred, train_dataset.labels)
             dev_acc = metrics.sentiment_accuracy_score(dev_pred, dev_dataset.labels)
@@ -310,17 +315,20 @@ def main():
             print('Epoch ', epoch, 'train percentage ', train_acc)
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
             print('Epoch ', epoch, 'test percentage ', test_acc)
+            print_list = subtree_metrics.print_list
+            torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
+            utils.print_trees_file(args, vocab, test_dataset, print_list, name='tree')
 
 
 if __name__ == "__main__":
     args = parse_args(type=1)
     # log to console and file
-    logger1 = log_util.create_logger(os.path.join('logs',args.name), print_console=True)
+    logger1 = log_util.create_logger(os.path.join(args.logs,args.name), print_console=True)
     logger1.info("LOG_FILE") # log using loggerba
     # attach log to stdout (print function)
     s1 = log_util.StreamToLogger(logger1)
     sys.stdout = s1
     print ('_________________________________start___________________________________')
     main()
-    log_link = log_util.up_gist(os.path.join('logs',args.name+'.log'), args.name, __file__)
+    log_link = log_util.up_gist(os.path.join(args.logs,args.name+'.log'), args.name, __file__, client_id='ec3ce6baf7dad6b7cf2c', client_secret='82240b38a7e662c28b2ca682325d634c9059efb0')
     print(log_link)

@@ -24,7 +24,7 @@ class Metrics():
         y = Var(deepcopy(labels), volatile=True)
         return nn.MSELoss()(x,y).data[0]
 
-    def sentiment_accuracy_score(self, predictions, labels, test_idx, fine_gained = True, num_classes = 3):
+    def sentiment_accuracy_score(self, predictions, labels, test_idx= None, fine_gained = True, num_classes = 3):
         _labels = deepcopy(labels)
         if num_classes == 2:
             _labels[_labels==2] = 1

@@ -73,9 +73,12 @@ def parse_args(type=0):
         parser.add_argument('--name', default='default_name',
                             help='name for log and saved models')
         parser.add_argument('--saved', default='saved_model',
-                            help='name for log and saved models')
+                            help='name for  saved models')
+        parser.add_argument('--logs', default='logs',
+                            help='name for logs')
         parser.add_argument('--mode', default='EXPERIMENT',
                             help='MODE')
+
 
         parser.add_argument('--test_idx', default='test_idx.npy',
                             help='dir to test idx np')
@@ -90,6 +93,8 @@ def parse_args(type=0):
                             help='embedding type paragram or paragram_xxl or glove (default: glove)')
         parser.add_argument('--paragram', default='/media/vdvinh/25A1FEDE380BDADA/data/john',
                             help='directory with paragram embeddings')
+        parser.add_argument('--embedding_other', default='meow',
+                            help='directory with other embeddings')
 
         parser.add_argument('--mem_dim', default=0, type=int,
                             help='memory dimension (default: 0 auto set)')
