@@ -98,6 +98,8 @@ def parse_args(type=0):
 
         parser.add_argument('--mem_dim', default=0, type=int,
                             help='memory dimension (default: 0 auto set)')
+        parser.add_argument('--input_dim', default=300, type=int,
+                            help='input dimension (default: 300, size of glove embedding)')
 
         parser.add_argument('--train_subtrees', default=4, type=int,
                             help='number of subtree to sample default 4')

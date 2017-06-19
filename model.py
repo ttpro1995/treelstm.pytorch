@@ -142,7 +142,7 @@ class BinaryTreeLSTM(nn.Module):
         params = F.torch.cat(one_dim)
         return params
 
-    def forward(self, tree, embs, training = False):
+    def forward(self, tree, embs, training = False, metric = None):
         # add singleton dimension for future call to node_forward
         # embs = F.torch.unsqueeze(self.emb(inputs),1)
 
@@ -168,6 +168,13 @@ class BinaryTreeLSTM(nn.Module):
                 if self.cudaFlag:
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
+            if not training and metric is not None:
+                # if self.args.num_classes == 3:
+                output[:, 1] = -9999  # no need middle (neutral) value
+                val, pred = torch.max(output, 1)
+                pred_cpu = pred.data.cpu()[0][0]
+                correct = pred_cpu == tree.gold_label
+                metric.count_depth(correct, 0, tree.idx, pred_cpu)
         return tree.state, loss
 
 
@@ -246,7 +253,7 @@ class ChildSumTreeLSTM(nn.Module):
 
         return c,h
 
-    def forward(self, tree, embs, training = False):
+    def forward(self, tree, embs, training = False, metric = None):
         # add singleton dimension for future call to node_forward
         # embs = F.torch.unsqueeze(self.emb(inputs),1)
 
@@ -268,6 +275,13 @@ class ChildSumTreeLSTM(nn.Module):
                 if self.cudaFlag:
                     target = target.cuda()
                 loss = loss + self.criterion(output, target)
+            if not training and metric is not None:
+                # if self.args.num_classes == 3:
+                output[:, 1] = -9999  # no need middle (neutral) value
+                val, pred = torch.max(output, 1)
+                pred_cpu = pred.data.cpu()[0][0]
+                correct = pred_cpu == tree.gold_label
+                metric.count_depth(correct, 0, tree.idx, pred_cpu)
         return tree.state, loss
 
     def get_child_states(self, tree):
@@ -365,8 +379,8 @@ class TreeLSTMSentiment(nn.Module):
         self.output_module = SentimentModule(cuda, mem_dim, num_classes, dropout=True)
         self.tree_module.set_output_module(self.output_module)
 
-    def forward(self, tree, inputs, training = False):
-        tree_state, loss = self.tree_module(tree, inputs, training)
+    def forward(self, tree, inputs, training = False, metric = None):
+        tree_state, loss = self.tree_module(tree, inputs, training, metric)
         output = tree.output
         return output, loss
 
@@ -398,7 +412,14 @@ class LSTMSentiment(nn.Module):
         params = F.torch.cat(one_dim)
         return params
 
-    def forward(self, tree, vec, training = False):
+    def forward(self, tree, vec, training = False, metric = None):
+        '''
+        :param tree: tree structure, for subtree sampling
+        :param vec: embedding vector of tree
+        :param training: training/eval mode
+        :param metric: prevent error, no use here
+        :return:
+        '''
         nodes = tree.depth_first_preorder()
         loss = Var(torch.zeros(1))  # init zero loss
         if self.cudaFlag:

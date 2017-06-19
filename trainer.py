@@ -106,6 +106,7 @@ class SentimentTrainer(object):
         predictions = predictions
         for i in tqdm(xrange(len(indices)),desc='Testing epoch  '+str(self.epoch)+''):
             idx = indices[i]
+            subtree_metric.current_idx = idx
             tree, sent, label = dataset[idx]
             input = Var(sent, volatile=True)
             target = Var(map_label_to_target_sentiment(label,self.args.num_classes, fine_grain=self.args.fine_grain), volatile=True)
@@ -113,7 +114,7 @@ class SentimentTrainer(object):
                 input = input.cuda()
                 target = target.cuda()
             emb = F.torch.unsqueeze(self.embedding_model(input),1)
-            output, _ = self.model(tree, emb) # size(1,5)
+            output, _ = self.model(tree, emb, metric = subtree_metric) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
             if self.args.num_classes == 3:
@@ -122,9 +123,9 @@ class SentimentTrainer(object):
             pred_cpu = pred.data.cpu()[0][0]
             predictions[i] = pred_cpu
             correct = pred_cpu == tree.gold_label
-            subtree_metric.current_idx = idx
-            subtree_metric.count_depth(correct, 0, tree.idx, pred_cpu)
-            # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
+            if self.args.model_name == 'lstm' or self.args.model_name == 'bilstm':
+                subtree_metric.count_depth(correct, 0, tree.idx, pred_cpu)
+               # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
         return loss/len(dataset), predictions, subtree_metric
 
 

@@ -30,6 +30,7 @@ from utils import load_word_vectors, build_vocab
 from config import parse_args
 # TRAIN AND TEST HELPER FUNCTIONS
 from trainer import SentimentTrainer
+import numpy as np
 
 # MAIN BLOCK
 def main():
@@ -37,8 +38,6 @@ def main():
     args = parse_args(type=1)
     print (args.name)
     print (args.model_name)
-
-    args.input_dim = 300
 
     if args.mem_dim == 0:
         if args.model_name == 'dependency':
@@ -137,6 +136,7 @@ def main():
 
     # for words common to dataset vocab and GLOVE, use GLOVE vectors
     # for other words in dataset vocab, use random normal vectors
+    emb_split_token = ' '
     if args.embedding == 'glove':
         emb_torch = 'sst_embed.pth'
         emb_vector = 'glove.840B.300d'
@@ -156,6 +156,7 @@ def main():
         emb_torch = 'other.pth'
         emb_vector = args.embedding_other
         emb_vector_path = emb_vector
+        emb_split_token = '\t'
         assert os.path.isfile(emb_vector_path + '.txt')
     else:
         assert False
@@ -166,7 +167,7 @@ def main():
     else:
 
         # load glove embeddings and vocab
-        glove_vocab, glove_emb = load_word_vectors(emb_vector_path)
+        glove_vocab, glove_emb = load_word_vectors(emb_vector_path, emb_split_token)
         print('==> Embedding vocabulary size: %d ' % glove_vocab.size())
 
         emb = torch.zeros(vocab.size(),glove_emb.size(1))
@@ -246,10 +247,9 @@ def main():
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
     elif mode == "PRINT_TREE":
-        for i in range(0, 10):
-            ttree, tsent, tlabel = dev_dataset[i]
-            utils.print_tree(ttree, 0)
-            print('_______________')
+        file_path = os.path.join('print_tree',args.name+'.npy')
+        print_list = np.load(file_path)
+        utils.print_trees_file_v2(args, vocab, test_dataset, print_list, name='tree')
         print('break')
         quit()
     elif mode == 'EVALUATE':
@@ -297,9 +297,12 @@ def main():
         model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_model_' + filename))
         embedding_model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_embedding_' + filename))
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
-        test_loss, test_pred, _ = trainer.test(test_dataset)
+        test_loss, test_pred, subtree_metrics = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels, num_classes=args.num_classes)
         print('Epoch with max dev:' + str(max_dev_epoch) + ' |test percentage ' + str(test_acc))
+        print_list = subtree_metrics.print_list
+        torch.save(print_list, os.path.join(args.saved, args.name + 'printlist.pth'))
+        utils.print_trees_file(args, vocab, test_dataset, print_list, name='tree')
         print('____________________' + str(args.name) + '___________________')
     else:
         for epoch in range(args.epochs):
