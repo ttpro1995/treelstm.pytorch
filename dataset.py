@@ -122,6 +122,7 @@ class SSTDataset(data.Dataset):
         self.labels = torch.Tensor(self.labels) # let labels be tensor
         for tree in self.trees:
             tree.set_spans()
+            tree.depth()
             tree.depth_first_preorder()
         self.size = len(self.trees)
 

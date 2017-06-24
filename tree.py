@@ -7,6 +7,7 @@ class Tree(object):
         self.gold_label = None # node label for SST
         self.output = None # output node for SST
         self.nodes = None
+        self._depth = None
 
     def add_child(self,child):
         child.parent = self
@@ -35,7 +36,7 @@ class Tree(object):
                 self.hi = max(self.hi, child.hi)
 
     def depth(self):
-        if getattr(self,'_depth'):
+        if self._depth is not None:
             return self._depth
         count = 0
         if self.num_children>0:

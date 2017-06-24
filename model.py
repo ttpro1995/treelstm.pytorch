@@ -155,7 +155,7 @@ class BinaryTreeLSTM(nn.Module):
             tree.state = self.leaf_module.forward(embs[tree.idx-1])
         else:
             for idx in xrange(tree.num_children):
-                _, child_loss = self.forward(tree.children[idx], embs, training)
+                _, child_loss = self.forward(tree.children[idx], embs, training, metric)
                 loss = loss + child_loss
             lc, lh, rc, rh = self.get_child_state(tree)
             tree.state = self.composer.forward(lc, lh, rc, rh)
@@ -174,7 +174,7 @@ class BinaryTreeLSTM(nn.Module):
                 val, pred = torch.max(output, 1)
                 pred_cpu = pred.data.cpu()[0][0]
                 correct = pred_cpu == tree.gold_label
-                metric.count_depth(correct, 0, tree.idx, pred_cpu)
+                metric.count_depth(correct, tree.depth(), tree.idx, pred_cpu)
         return tree.state, loss
 
 
@@ -262,7 +262,7 @@ class ChildSumTreeLSTM(nn.Module):
             loss = loss.cuda()
 
         for idx in xrange(tree.num_children):
-            _, child_loss = self.forward(tree.children[idx], embs, training)
+            _, child_loss = self.forward(tree.children[idx], embs, training, metric)
             loss = loss + child_loss
         child_c, child_h = self.get_child_states(tree)
         tree.state = self.node_forward(embs[tree.idx-1], child_c, child_h)
