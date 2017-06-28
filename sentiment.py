@@ -328,6 +328,7 @@ def main():
             print('train percentage ' + str(train_acc))
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
             if dev_acc > max_dev:
+                utils.mkdir_p(args.saved)
                 max_dev = dev_acc
                 max_dev_epoch = epoch
                 torch.save(model, args.saved + str(epoch) + '_model_' + filename)
