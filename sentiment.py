@@ -304,11 +304,12 @@ def main():
             print('==> Dev loss   : %f \t' % dev_loss, end="")
             print('Epoch ', epoch, 'dev percentage ', dev_acc)
     if mode =='PRINT_TREE':
-        # print_list = torch.load(os.path.join(args.saved, args.name + 'printlist.pth'))
-        # utils.print_trees_file(args, vocab, tagvocab, dev_dataset, print_list, name=args.name)
-        # print_list = torch.Tensor([ 265,  200, 1580,  425, 1569,   23, 1014, 1563, 1160, 1540, 1680, 1086]).long()
+        if test_idx is None:
+            test_idx = xrange(len(test_dataset))
+            test_idx = np.array(test_idx)
         print_list = torch.from_numpy(test_idx).long()
         utils.print_trees_file_list(args, vocab, tagvocab, relvocab, test_dataset, print_list, name=args.name)
+        utils.print_trees_file_list_treeonly(args, vocab, tagvocab, relvocab, test_dataset, print_list, name=args.name)
         quit()
     if mode =='EVALUATE':
         filename = args.name + '.pth'

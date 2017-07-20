@@ -158,6 +158,9 @@ class SSTDataset(data.Dataset):
             self.labels.append(self.trees[i].gold_label)
         self.labels = torch.Tensor(self.labels) # let labels be tensor
         self.size = len(self.trees)
+        for tree in self.trees:
+            tree.get_max_n_child()
+            tree.depth()
 
     def __len__(self):
         return self.size

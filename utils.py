@@ -312,9 +312,36 @@ def print_trees_file_list(args, vocab, tag_vocab, rel_vocab, dataset, print_list
         tree, sent, tag, rel, label = dataset[idx]
         sent_toks = vocab.convertToLabels(sent, -1)
         sentences = ' '.join(sent_toks)
-        tree_file.write('idx_'+str(idx)+' '+sentences+'\n')
+        max_child = tree.get_max_n_child()
+        tree_file.write('idx_'+str(idx)+ ' n_child_'+str(max_child) +' '+sentences+'\n')
         print_tree_file(tree_file, vocab, tag_vocab, rel_vocab, sent, tag, rel, tree, None)
         tree_file.write('------------------------\n')
+    tree_file.close()
+    tree_dir_link = log_util.up_gist(treedir, args.name, 'tree')
+    print('Print tree link '+tree_dir_link)
+
+def print_trees_file_list_treeonly(args, vocab, tag_vocab, rel_vocab, dataset, print_list, name = '', raw=False):
+    name = name + '.txt'
+    treedir = os.path.join('plot', args.name)
+    treedir = os.path.join(treedir, 'incorrect_tree')
+    folder_dir = treedir
+    mkdir_p(treedir)
+    treedir = os.path.join(treedir, args.name + name)
+    tree_file = open(treedir, 'w')
+    incorrect = set()
+    if raw:
+        for idx in print_list:
+            tree_file.write(str(idx) + ' ')
+            incorrect.add(idx)
+        tree_file.write('\n-----------------------------------\n')
+    for idx in print_list:
+        tree, sent, tag, rel, label = dataset[idx]
+        sent_toks = vocab.convertToLabels(sent, -1)
+        sentences = ' '.join(sent_toks)
+        max_child = tree.get_max_n_child()
+        depth = tree.depth()
+        tree_file.write('idx_%d n_child_%d depth_%d %s \n'%(idx, max_child,depth, sentences))
+        # tree_file.write('idx_'+str(idx)+' '+ ' n_child_'+str(max_child) + ' ' +sentences+'\n')
     tree_file.close()
     tree_dir_link = log_util.up_gist(treedir, args.name, 'tree')
     print('Print tree link '+tree_dir_link)
