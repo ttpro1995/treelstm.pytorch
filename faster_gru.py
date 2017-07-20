@@ -28,7 +28,8 @@ class FasterGRUTree(nn.Module):
         self.criterion = criterion
 
         self.leaf_module = nn.GRUCell(word_dim+ tag_dim, mem_dim)
-        self.node_module = nn.GRUCell(1, mem_dim)
+        # self.node_module = nn.GRUCell(1, mem_dim)
+        # self.node_module = nn.GRUCell(mem_dim + 2 * tag_dim, mem_dim)
         #self.children_module = nn.GRU(mem_dim+ 2*tag_dim, mem_dim, num_layers=1, bidirectional=False, dropout=CONST.horizontal_dropout)
         self.children_module = nn.GRUCell(mem_dim + 2*tag_dim, mem_dim)
         self.dropout_word = nn.Dropout(p=args.word_dropout)
@@ -38,7 +39,7 @@ class FasterGRUTree(nn.Module):
         self.dropout_leaf = nn.Dropout(p=args.leaf_dropout)
         if self.cudaFlag:
             self.leaf_module = self.leaf_module.cuda()
-            self.node_module = self.node_module.cuda()
+            # self.node_module = self.node_module.cuda()
             self.children_module = self.children_module.cuda()
             self.dropout_word = self.dropout_word.cuda()
             self.dropout_pos_tag = self.dropout_pos_tag.cuda()
@@ -59,7 +60,8 @@ class FasterGRUTree(nn.Module):
         :return: 1d tensor
         """
         params = []
-        for m in [self.leaf_module, self.node_module, self.children_module]:
+        # for m in [self.leaf_module, self.node_module, self.children_module]:
+        for m in [self.leaf_module,  self.children_module]:
             # we do not get param of output module
             l = list(m.parameters())
             params.extend(l)
@@ -70,7 +72,8 @@ class FasterGRUTree(nn.Module):
 
     def getGrad(self):
         params = []
-        for m in [self.leaf_module, self.node_module, self.children_module]:
+        #for m in [self.leaf_module, self.node_module, self.children_module]:
+        for m in [self.leaf_module,  self.children_module]:
             # we do not get param of output module
             l = list(m.parameters())
             params.extend(l)
@@ -110,10 +113,13 @@ class FasterGRUTree(nn.Module):
             for i in xrange(tree.num_children):
                 h_final = self.dropout_horizontal_mem(self.children_module.forward(x[i], h_final))
 
-            x_zeros = Var(torch.zeros(1, 1), requires_grad=False)
+            x_zeros = Var(torch.zeros(1, self.mem_dim), requires_grad=False)
             if self.cudaFlag:
                 x_zeros = x_zeros.cuda()
-            tree.state = self.dropout_vertical_mem(self.node_module.forward(x_zeros, h_final))
+            # tree.state = self.dropout_vertical_mem(self.node_module.forward(x_zeros, h_final))
+            tp = tags[tree.idx - 1]
+            x_final = torch.cat([x_zeros, tp, tp], 1)
+            tree.state = self.dropout_vertical_mem(self.children_module.forward(x_final, h_final))
 
         # if self.output_module != None and (max_depth == None or (tree.depth() <= max_depth)):
         if self.output_module != None:
