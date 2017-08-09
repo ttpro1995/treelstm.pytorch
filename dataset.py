@@ -87,20 +87,24 @@ class SICKDataset(data.Dataset):
 
 # Dataset class for SICK dataset
 class SSTDataset(data.Dataset):
-    def __init__(self, path, vocab, tagvocab, relvocab , num_classes, fine_grain):
+    def __init__(self, path, vocab, tagvocab, relvocab , num_classes, fine_grain, model_name):
         super(SSTDataset, self).__init__()
         self.vocab = vocab
         self.num_classes = num_classes
         self.fine_grain = fine_grain
         self.tagvocab = tagvocab
         self.relvocab = relvocab
+        self.model_name = model_name
 
         temp_sentences = self.read_sentences(os.path.join(path,'sents.toks'))
         temp_tags = self.read_tags(os.path.join(path,'tags.txt'))
         temp_rels = self.read_rels(os.path.join(path, 'rels.txt'))
 
-        temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'), temp_tags, temp_rels)
 
+        if model_name == "dependency":
+            temp_trees = self.read_trees(os.path.join(path,'dparents.txt'), os.path.join(path,'dlabels.txt'), temp_tags, temp_rels)
+        else:
+            temp_trees = self.read_trees(os.path.join(path, 'parents.txt'), os.path.join(path, 'labels.txt'), temp_tags, temp_rels)
         # self.labels = self.read_labels(os.path.join(path,'dlabels.txt'))
         self.labels = []
 
@@ -116,6 +120,8 @@ class SSTDataset(data.Dataset):
                     new_sentences.append(temp_sentences[i])
                     new_tags.append(temp_tags[i])
                     new_rels.append(temp_rels[i])
+
+
             self.trees = new_trees
             self.sentences = new_sentences
             self.tags = new_tags
@@ -141,7 +147,9 @@ class SSTDataset(data.Dataset):
         tree = deepcopy(self.trees[index])
         sent = deepcopy(self.sentences[index])
         tag = deepcopy(self.tags[index])
+
         rel = deepcopy(self.rels[index])
+
         label = deepcopy(self.labels[index])
         return (tree, sent, tag, rel, label)
 
@@ -219,8 +227,8 @@ class SSTDataset(data.Dataset):
                     trees[idx] = tree
                     tree.idx = idx
                     tree.gold_label = labels[idx-1] # add node label
-                    tree.tags = tags[idx-1]
-                    tree.rels = rels[idx-1]
+                    # tree.tags = tags[idx-1]
+                    # tree.rels = rels[idx-1]
                     #if trees[parent-1] is not None:
                     if parent in trees.keys():
                         trees[parent].add_child(tree)

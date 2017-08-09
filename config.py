@@ -1,5 +1,5 @@
 import argparse
-
+import random
 def parse_args(type=0):
     if type == 0:
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentence Similarity on Dependency Trees')
@@ -30,6 +30,16 @@ def parse_args(type=0):
         parser = argparse.ArgumentParser(description='PyTorch TreeLSTM for Sentiment Analyusis on Dependency Trees')
         parser.add_argument('--data', default='data/sst/',
                             help='path to dataset')
+        parser.add_argument('--model_name', default='constituency',
+                            help='model name constituency or dependency or lstm or bilstm')
+        parser.add_argument('--logs', default='logs',
+                            help='name for logs')
+        parser.add_argument('--mode', default='EXPERIMENT',
+                            help='MODE')
+        parser.add_argument('--name', default='default_name',
+                            help='name for log and saved models')
+        parser.add_argument('--saved', default='saved_model',
+                            help='name for  saved models')
         parser.add_argument('--glove', default='../treelstm.pytorch/data/glove/',
                             help='directory with GLOVE embeddings')
         parser.add_argument('--batchsize', default=25, type=int,
@@ -46,13 +56,13 @@ def parse_args(type=0):
                             help='l2 l2 regularization (default: 1e-4)')
         parser.add_argument('--optim', default='adagrad',
                             help='optimizer (default: adagrad)')
-        parser.add_argument('--seed', default=123, type=int,
+        parser.add_argument('--seed', default=int(random.random()*1e+9), type=int,
                             help='random seed (default: 123)')
-        parser.add_argument('--fine_grain', default=False, type=bool,
+        parser.add_argument('--fine_grain', action = 'store_true',
                             help='fine grained (default False)')
 
-        parser.add_argument('--at_hid_dim', default=100, type=int,
-                            help='fine grained (default False)')
+        parser.add_argument('--mem_dim', default=0, type=int,
+                            help='memory dimension 0 is auto')
 
         cuda_parser = parser.add_mutually_exclusive_group(required=False)
         cuda_parser.add_argument('--cuda', dest='cuda', action='store_true')

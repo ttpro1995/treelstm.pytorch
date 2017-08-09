@@ -31,16 +31,17 @@ class SentimentTrainer(object):
             tree, sent, tag, rel, label = dataset[indices[idx]]
             input = Var(sent)
             tag_input = Var(tag)
-            rel_input = Var(rel)
+            # rel_input = Var(rel)
             target = Var(map_label_to_target_sentiment(label,dataset.num_classes, fine_grain=self.args.fine_grain))
             if self.args.cuda:
                 input = input.cuda()
                 tag_input = tag_input.cuda()
-                rel_input = rel_input.cuda()
-                target = target.cuda()
-            sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
+                # rel_input = rel_input.cuda()
+                # target = target.cuda()
+            # sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, rel_input)
+            sent_emb, tag_emb, rel_emb = self.embedding_model(input, tag_input, None)
             emb = F.torch.cat([sent_emb, tag_emb], 2)
-            output, err = self.model.forward(tree, emb, training = True)
+            output, err = self.model(tree, emb, training = True)
             #params = self.model.get_tree_parameters()
             #params_norm = params.norm()
             err = err/self.args.batchsize #+ 0.5*self.args.reg*params_norm*params_norm # custom bias
@@ -83,9 +84,11 @@ class SentimentTrainer(object):
             output, _ = self.model(tree, emb) # size(1,5)
             err = self.criterion(output, target)
             loss += err.data[0]
-            output[:,1] = -9999 # no need middle (neutral) value
+            if self.args.num_classes == 3:
+                output[:, 1] = -9999  # no need middle (neutral) value
             val, pred = torch.max(output, 1)
-            predictions[idx] = pred.data.cpu()[0][0]
+            pred_cpu = pred.data.cpu()[0]
+            predictions[idx] = pred_cpu
             # predictions[idx] = torch.dot(indices,torch.exp(output.data.cpu()))
         return loss/len(dataset), predictions
 
