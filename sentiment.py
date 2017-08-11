@@ -155,9 +155,17 @@ def main():
     elif args.embedding == 'other':
         emb_torch = 'other.pth'
         emb_vector = args.embedding_other
-        emb_vector_path = emb_vector
+        emb_vector_path = emb_vector        
         emb_split_token = '\t'
         assert os.path.isfile(emb_vector_path + '.txt')
+    elif args.embedding == 'amazon320':
+        emb_torch = 'other.pth'
+        emb_vector = args.embedding_other
+        emb_vector_path = emb_vector
+        emb_vector_path2 = emb_vector+'short'
+        emb_split_token = ' '
+        assert os.path.isfile(emb_vector_path + '.txt')
+        assert os.path.isfile(emb_vector_path2 + '.txt')
     else:
         assert False
 
@@ -165,21 +173,52 @@ def main():
     if os.path.isfile(emb_file):
         emb = torch.load(emb_file)
     else:
+        if args.embedding == 'amazon320':
+            # load glove embeddings and vocab
+            glove_vocab, glove_emb = load_word_vectors(emb_vector_path, emb_split_token)
+            glove_vocab2, glove_emb2 = load_word_vectors(emb_vector_path2, emb_split_token)
+            print('==> Embedding vocabulary size: %d ' % glove_vocab.size())
 
-        # load glove embeddings and vocab
-        glove_vocab, glove_emb = load_word_vectors(emb_vector_path, emb_split_token)
-        print('==> Embedding vocabulary size: %d ' % glove_vocab.size())
+            emb = torch.zeros(vocab.size(), glove_emb.size(1)+glove_emb2.size(1))
 
-        emb = torch.zeros(vocab.size(),glove_emb.size(1))
+            for word in vocab.labelToIdx.keys():
+                if glove_vocab.getIndex(word):
+                    temp1 = glove_emb[glove_vocab.getIndex(word)]
+                else:
+                    temp1 = torch.Tensor(glove_emb.size(1)).normal_(-0.05, 0.05)
+                if glove_vocab2.getIndex(word):
+                    temp2 = glove_emb2[glove_vocab2.getIndex(word)]
+                else:
+                    temp2 = torch.Tensor(glove_emb2.size(1)).normal_(-0.05, 0.05)
+                emb[vocab.getIndex(word)] = torch.cat([temp1, temp2])
 
-        for word in vocab.labelToIdx.keys():
-            if glove_vocab.getIndex(word):
-                emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
-            else:
-                emb[vocab.getIndex(word)] = torch.Tensor(emb[vocab.getIndex(word)].size()).normal_(-0.05,0.05)
-        torch.save(emb, emb_file)
-        is_preprocessing_data = True # flag to quit
-        print('done creating emb, quit')
+            glove_vocab = None
+            glove_emb = None
+            glove_vocab2 = None
+            glove_emb2 = None
+            gc.collect()
+            torch.save(emb, emb_file)
+            is_preprocessing_data = True  # flag to quit
+            print('done creating emb, quit')
+        else:
+
+            # load glove embeddings and vocab
+            glove_vocab, glove_emb = load_word_vectors(emb_vector_path, emb_split_token)
+            print('==> Embedding vocabulary size: %d ' % glove_vocab.size())
+
+            emb = torch.zeros(vocab.size(),glove_emb.size(1))
+
+            for word in vocab.labelToIdx.keys():
+                if glove_vocab.getIndex(word):
+                    emb[vocab.getIndex(word)] = glove_emb[glove_vocab.getIndex(word)]
+                else:
+                    emb[vocab.getIndex(word)] = torch.Tensor(emb[vocab.getIndex(word)].size()).normal_(-0.05,0.05)
+            glove_vocab = None
+            glove_emb = None
+            gc.collect()
+            torch.save(emb, emb_file)
+            is_preprocessing_data = True # flag to quit
+            print('done creating emb, quit')
 
     if is_preprocessing_data:
         print ('quit program')
@@ -231,6 +270,7 @@ def main():
         test_idx = np.load(test_idx_dir)
 
     mode = args.mode
+    dev_loss, dev_pred, _ = trainer.test(dev_dataset)
     if mode == 'DEBUG':
         for epoch in range(args.epochs):
             # print a tree
@@ -289,13 +329,13 @@ def main():
                 max_dev = dev_acc
                 max_dev_epoch = epoch
                 utils.mkdir_p(args.saved)
-                torch.save(model, os.path.join(args.saved, str(epoch) + '_model_' + filename))
-                torch.save(embedding_model, os.path.join(args.saved, str(epoch) + '_embedding_' + filename))
+                torch.save(model, os.path.join(args.saved, '_model_' + filename))
+                torch.save(embedding_model, os.path.join(args.saved, '_embedding_' + filename))
             gc.collect()
         print('epoch ' + str(max_dev_epoch) + ' dev score of ' + str(max_dev))
         print('eva on test set ')
-        model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_model_' + filename))
-        embedding_model = torch.load(os.path.join(args.saved, str(max_dev_epoch) + '_embedding_' + filename))
+        model = torch.load(os.path.join(args.saved, '_model_' + filename))
+        embedding_model = torch.load(os.path.join(args.saved, '_embedding_' + filename))
         trainer = SentimentTrainer(args, model, embedding_model, criterion, optimizer)
         test_loss, test_pred, subtree_metrics = trainer.test(test_dataset)
         test_acc = metrics.sentiment_accuracy_score(test_pred, test_dataset.labels, num_classes=args.num_classes)

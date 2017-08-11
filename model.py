@@ -170,9 +170,11 @@ class BinaryTreeLSTM(nn.Module):
                 loss = loss + self.criterion(output, target)
             if not training and metric is not None:
                 # if self.args.num_classes == 3:
-                output[:, 1] = -9999  # no need middle (neutral) value
+                # output[:, 1] = -9999  # no need middle (neutral) value
+                # no good for neutral
+
                 val, pred = torch.max(output, 1)
-                pred_cpu = pred.data.cpu()[0][0]
+                pred_cpu = pred.data.cpu()[0]
                 correct = pred_cpu == tree.gold_label
                 metric.count_depth(correct, tree.depth(), tree.idx, pred_cpu)
         return tree.state, loss
@@ -277,9 +279,10 @@ class ChildSumTreeLSTM(nn.Module):
                 loss = loss + self.criterion(output, target)
             if not training and metric is not None:
                 # if self.args.num_classes == 3:
-                output[:, 1] = -9999  # no need middle (neutral) value
+                # output[:, 1] = -9999  # no need middle (neutral) value
+                # no good for fine grain
                 val, pred = torch.max(output, 1)
-                pred_cpu = pred.data.cpu()[0][0]
+                pred_cpu = pred.data.cpu()[0]
                 correct = pred_cpu == tree.gold_label
                 metric.count_depth(correct, 0, tree.idx, pred_cpu)
         return tree.state, loss
